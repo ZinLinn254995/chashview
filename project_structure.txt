@@ -1,0 +1,84 @@
+lib/
+│
+├── main.dart
+│
+├── core/
+│   ├── constants/
+│   │   ├── app_assets.dart          # Image/icon paths
+│   │   ├── app_colors.dart          # Color constants
+│   │   ├── app_strings.dart         # Text constants
+│   │   └── app_sizes.dart           # Spacing & padding constants
+│   │
+│   ├── utils/
+│   │   ├── validators.dart          # Email/password validation, etc.
+│   │   ├── helpers.dart             # Reusable helper functions
+│   │   └── logger.dart              # Log helper for debug
+│   │
+│   ├── routing/
+│   │   ├── app_router.dart          # GoRouter or Navigator setup
+│   │   └── route_names.dart         # Route name constants
+│   │
+│   ├── services/
+│   │   ├── network_service.dart     # Internet connectivity checker
+│   │   └── firebase_service.dart    # Firebase instance setup
+│   │
+│   ├── errors/
+│   │   ├── app_exceptions.dart      # Custom error handling
+│   │   └── failure.dart             # Failure model for repository responses
+│   │
+│   └── theme/
+│       ├── app_theme.dart           # Light/Dark theme setup
+│       ├── theme_colors.dart        # Light/Dark theme colors
+│       ├── theme_text.dart           # Typography (fonts, sizes, weights)
+│       ├── theme_spacing.dart        # Standardized spacing, radius, padding
+│       ├── theme_shapes.dart         # Card, button, dialog border radii
+│       ├── theme_buttons.dart        # Custom button styles (primary, secondary)
+│       ├── theme_icons.dart          # Icon sizing or color mapping
+│       ├── theme_animation.dart      # Animation durations, curves
+│       └── theme_extensions.dart    # Custom theme extensions (colors, spacing)
+│
+├── data/
+│   ├── datasources/
+│   │   ├── firebase_auth_datasource.dart   # Handles Firebase Auth logic
+│   │   └── google_signin_datasource.dart   # Handles Google Sign-In logic
+│   │
+│   ├── models/
+│   │   └── user_model.dart                # Firebase user model
+│   │
+│   └── repositories/
+│       └── firebase_auth_repository_impl.dart  # Implements AuthRepository
+│
+├── domain/
+│   ├── entities/
+│   │   └── user_entity.dart          # Abstract user entity (clean layer)
+│   │
+│   ├── repositories/
+│   │   └── auth_repository.dart      # Abstract class defining auth methods
+│   │
+│   └── usecases/
+│       ├── sign_in_with_google_usecase.dart
+│       ├── sign_out_usecase.dart
+│       └── get_current_user_usecase.dart
+│
+├── presentation/
+│   ├── main_app_content.dart
+│   ├── viewmodels/
+│   │   ├── auth_viewmodel.dart       # Handles auth states & logic
+│   │   ├── splash_viewmodel.dart     # Handles app start logic
+│   │   └── profile_viewmodel.dart    # Handles user profile data
+│   │
+│   ├── screens/
+│   │   ├── splash_screen.dart
+│   │   ├── login_screen.dart
+│   │   └── home_screen.dart
+│   │
+│   ├── widgets/
+│   │   ├── loading_widget.dart
+│   │   ├── error_widget.dart
+│   │   └── primary_button.dart
+│   │
+│   └── wrapper/
+│       └── app_wrapper.dart          # Checks auth state & routes to Login/Home
+│
+└── di/
+    └── injection_container.dart      # Dependency Injection setup (GetIt)
