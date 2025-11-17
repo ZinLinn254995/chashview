@@ -7,4 +7,9 @@ class RouteNames {
   static const String chart = '/chart';
   static const String profile = '/profile';
   static const String settings = '/settings';
+  static const String lessonOne = '/lessonOne';
+  static const String lessonTwo = '/lessonTwo';
+  static const String lessonThree = '/lessonThree';
+  static const String lessonFour = '/lessonFour';
+  static const String category = '/category';
 }

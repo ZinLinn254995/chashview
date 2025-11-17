@@ -28,6 +28,7 @@ class AppRadius {
 
 /// Font sizes
 class AppFontSize {
+  static const double xxs = 8.0;
   static const double xs = 10.0;
   static const double sm = 12.0;
   static const double md = 14.0;

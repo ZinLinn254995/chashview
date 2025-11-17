@@ -1,5 +1,5 @@
-import '../repositories/auth_repository.dart';
-import '../../domain/entities/user_entity.dart';
+import '../../repositories/auth_repository.dart';
+import '../../entities/user_entity.dart';
 
 class SignInWithGoogleUseCase {
   final AuthRepository repository;

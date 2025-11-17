@@ -8,8 +8,6 @@ class AuthRepositoryImpl implements AuthRepository {
 
   AuthRepositoryImpl(this.remoteDataSource);
 
-  /// Sign in with Google and return UserEntity
-  /// Also handles new user detection & saving in Firebase Realtime DB
   @override
   Future<UserEntity?> signInWithGoogle() async {
     final userEntity = await remoteDataSource.signInWithGoogle();
@@ -18,7 +16,7 @@ class AuthRepositoryImpl implements AuthRepository {
     // Check if user exists in DB
     final exists = await remoteDataSource.checkUserExists(userEntity.uid);
 
-    // If new user → save to Realtime DB
+    // If new user → save to Realtime DB using FirebasePaths
     if (!exists) {
       await remoteDataSource.saveNewUser(userEntity);
     }
@@ -26,13 +24,11 @@ class AuthRepositoryImpl implements AuthRepository {
     return userEntity;
   }
 
-  /// Sign out from Firebase & Google
   @override
   Future<void> signOut() async {
     await remoteDataSource.signOut();
   }
 
-  /// Get current user as UserEntity
   @override
   UserEntity? getCurrentUser() {
     final user = remoteDataSource.getCurrentUser();

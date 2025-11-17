@@ -2,13 +2,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../../domain/entities/user_entity.dart';
+import '../../core/constants/firebase_paths.dart';
 
 abstract class AuthRemoteDataSource {
   Future<UserEntity?> signInWithGoogle(); // Return UserEntity instead of UserCredential
   Future<void> signOut();
   User? getCurrentUser();
 
-  // New methods for new user detection
   Future<bool> checkUserExists(String uid);
   Future<void> saveNewUser(UserEntity user);
 }
@@ -16,14 +16,14 @@ abstract class AuthRemoteDataSource {
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final FirebaseAuth firebaseAuth;
   final GoogleSignIn googleSignIn;
-  final DatabaseReference dbRef = FirebaseDatabase.instance.ref().child('users');
 
   AuthRemoteDataSourceImpl({
     required this.firebaseAuth,
     required this.googleSignIn,
   });
 
-  /// Sign in with Google and return UserEntity
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
+
   @override
   Future<UserEntity?> signInWithGoogle() async {
     final googleUser = await googleSignIn.signIn();
@@ -57,17 +57,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   User? getCurrentUser() => firebaseAuth.currentUser;
 
-  /// Check if user already exists in Realtime Database
   @override
   Future<bool> checkUserExists(String uid) async {
-    final snapshot = await dbRef.child(uid).get();
+    final snapshot = await _dbRef.child(FirebasePaths.user(uid)).get();
     return snapshot.exists;
   }
 
-  /// Save new user data to Realtime Database
   @override
   Future<void> saveNewUser(UserEntity user) async {
-    await dbRef.child(user.uid).set({
+    final path = FirebasePaths.profile(user.uid);
+    await _dbRef.child(path).set({
       'name': user.displayName,
       'email': user.email,
       'photoUrl': user.photoUrl,

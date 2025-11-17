@@ -8,4 +8,5 @@ class AppIcons {
   static const IconData logout = Icons.logout_rounded;
   static const IconData income = Icons.arrow_downward_rounded;
   static const IconData expense = Icons.arrow_upward_rounded;
+  static const IconData add = Icons.add_rounded;
 }

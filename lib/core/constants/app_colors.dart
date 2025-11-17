@@ -11,9 +11,17 @@ class AppColors {
   static const Color textNeonLime = Color(0xFFCCFF01);
   static const Color textHotPink = Color(0xFFFF085D);
   static const Color textWhite = Colors.white;
+  static const Color textBlack = Colors.black;
+
 
   static const Color borderNeonLime = Color(0xFFCCFF01);
   static const Color borderHotPink = Color(0xFFFF085D);
+  static const Color borderTransparent = Colors.transparent;
+
+  static const Color buttonHotPink = Color(0xFFFF085D);
+  static const Color buttonNeonLime = Color(0xFFCCFF01);
+
+  static const Color shadowHotPink = Color(0xFFFF085D);
 
   // Common Colors
   static const Color transparent = Colors.transparent;

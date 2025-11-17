@@ -53,6 +53,10 @@ dependencies:
   shared_preferences: ^2.5.3
   font_awesome_flutter: ^10.12.0
 
+  gradient_circular_progress_indicator: ^0.0.4
+  fl_chart: ^1.1.1
+  syncfusion_flutter_gauges: ^31.2.5
+
   # Icons
   cupertino_icons: ^1.0.8
 

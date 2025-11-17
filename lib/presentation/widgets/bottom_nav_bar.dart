@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_icons.dart';
 
 class BottomNavBar extends StatelessWidget {
@@ -14,13 +13,21 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return BottomNavigationBar(
       currentIndex: currentIndex,
       onTap: onTap,
-      backgroundColor: AppColors.backgroundPrimary,
-      selectedItemColor: AppColors.neonLime,
-      unselectedItemColor: AppColors.white,
       type: BottomNavigationBarType.fixed,
+      backgroundColor: colorScheme.surface,
+
+      selectedItemColor: colorScheme.primary,
+      unselectedItemColor: colorScheme.onSurfaceVariant,
+
+      selectedLabelStyle: textTheme.labelMedium?.copyWith(color: colorScheme.primary),
+      unselectedLabelStyle: textTheme.labelMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+
       items: const [
         BottomNavigationBarItem(
           icon: Icon(AppIcons.home),

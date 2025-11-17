@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import '../../domain/usecases/get_current_user_usecase.dart';
 import '../../domain/entities/user_entity.dart';
+import '../../domain/usecases/auth/get_current_user_usecase.dart';
 
 enum SplashState { loading, authenticated, unauthenticated }
 

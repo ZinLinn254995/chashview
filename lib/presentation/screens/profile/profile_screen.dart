@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/routing/route_names.dart';
 import '../../viewmodels/auth_viewmodel.dart';
-import '../../viewmodels/main_viewmodel.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -13,7 +12,6 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late final AuthViewModel authVM = context.read<AuthViewModel>();
-  late final MainViewModel viewModel = context.read<MainViewModel>();
 
   @override
   void initState() {
@@ -50,7 +48,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Consumer<AuthViewModel>(
       builder: (context, authVM, _) {
         return Scaffold(
-          appBar: AppBar(title: const Text('Profile')),
           body: Center(
             child: authVM.isLoading
                 ? const CircularProgressIndicator()

@@ -1,15 +1,119 @@
+import 'package:chashview/core/routing/route_names.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../core/constants/app_currency.dart';
+import '../../viewmodels/auth_viewmodel.dart';
+import '../../viewmodels/currency_viewmodel.dart';
+import '../../viewmodels/main_viewmodel.dart';
+import '../../widgets/circular_progress_widget.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  double progressValue = 0.5; // 50%
+
+  @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    final viewModel = context.read<MainViewModel>();
+    final currencyViewModel = context.watch<CurrencyViewModel>();
+
+    return Scaffold(
+      backgroundColor: Colors.black,
       body: Center(
-        child: Text(
-          'Settings Screen',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressWidget(progress: progressValue, size: 180),
+              const SizedBox(height: 30),
+
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    progressValue += 0.1;
+                    if (progressValue > 1.0) progressValue = 0.0;
+                  });
+                },
+                child: const Text('Increase Progress'),
+              ),
+              const SizedBox(height: 20),
+
+              ElevatedButton(
+                onPressed: () {
+                  viewModel.navigateTo(RouteNames.lessonOne, hideBottomNav: true);
+                },
+                child: const Text('Lesson 1'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  viewModel.navigateTo(RouteNames.lessonTwo, hideBottomNav: true);
+                },
+                child: const Text('Lesson 2'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  viewModel.navigateTo(RouteNames.lessonThree, hideBottomNav: true);
+                },
+                child: const Text('Lesson 3'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  viewModel.navigateTo(RouteNames.lessonFour, hideBottomNav: true);
+                },
+                child: const Text('Lesson 4'),
+              ),
+
+              ElevatedButton(
+                onPressed: () {
+                  viewModel.navigateTo(RouteNames.category, hideBottomNav: true);
+                },
+                child: const Text('Go to Category List'),
+              ),
+
+
+              const SizedBox(height: 30),
+
+              // ✅ Currency Dropdown Added Below
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButton<String>(
+                  value: currencyViewModel.selectedCurrency,
+                  isExpanded: true,
+                  dropdownColor: Colors.grey[900],
+                  underline: const SizedBox(),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  items: AppCurrency.currencyList.map((symbol) {
+                    final displayText =
+                        "${AppCurrency.currencyFullName[symbol]} ($symbol)";
+                    return DropdownMenuItem<String>(
+                      value: symbol,
+                      child: Text(displayText),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      currencyViewModel.changeCurrency(value);
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "Current: ${currencyViewModel.selectedCurrency}",
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ],
+          ),
         ),
       ),
     );
