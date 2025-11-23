@@ -16,40 +16,51 @@ class BottomNavBar extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return BottomNavigationBar(
-      currentIndex: currentIndex,
-      onTap: onTap,
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: colorScheme.surface,
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: colorScheme.outlineVariant, // subtle separator
+            width: 0.6, // thin line
+          ),
+        ),
+      ),
+      child: BottomNavigationBar(
+        currentIndex: currentIndex,
+        onTap: onTap,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: colorScheme.surface,
 
-      selectedItemColor: colorScheme.primary,
-      unselectedItemColor: colorScheme.onSurfaceVariant,
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: colorScheme.onSurfaceVariant,
 
-      selectedLabelStyle: textTheme.labelMedium?.copyWith(color: colorScheme.primary),
-      unselectedLabelStyle: textTheme.labelMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+        selectedLabelStyle: textTheme.labelMedium?.copyWith(color: colorScheme.primary),
+        unselectedLabelStyle: textTheme.labelMedium?.copyWith(color: colorScheme.onSurfaceVariant),
 
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(AppIcons.home),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(AppIcons.income),
-          label: 'Income',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(AppIcons.expense),
-          label: 'Expense',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(AppIcons.chart),
-          label: 'Chart',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(AppIcons.profile),
-          label: 'Profile',
-        ),
-      ],
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(AppIcons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(AppIcons.income),
+            label: 'Income',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(AppIcons.expense),
+            label: 'Expense',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(AppIcons.chart),
+            label: 'Chart',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(AppIcons.profile),
+            label: 'Profile',
+          ),
+        ],
+      ),
     );
   }
+
 }

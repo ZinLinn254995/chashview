@@ -1,15 +1,12 @@
+import 'package:chashview/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_icons.dart';
-import '../../core/constants/app_sizes.dart';
-
 enum CompareType { income, expense }
-enum Period { day, week, month, year }
+enum Period { day, month, year, allTime }
 
 class CompareText extends StatelessWidget {
   final CompareType type;
-  final double percentage; // e.g., 20.0 means 20%
+  final double? percentage;
   final Period period;
 
   const CompareText({
@@ -21,14 +18,16 @@ class CompareText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Define text for period
+    final scheme = Theme.of(context).colorScheme;
+    final textStyle = Theme.of(context).textTheme.labelSmall;
+
+    // -------------------------------
+    // PERIOD TEXT
+    // -------------------------------
     String periodText;
     switch (period) {
       case Period.day:
         periodText = 'previous day';
-        break;
-      case Period.week:
-        periodText = 'previous week';
         break;
       case Period.month:
         periodText = 'previous month';
@@ -36,63 +35,108 @@ class CompareText extends StatelessWidget {
       case Period.year:
         periodText = 'previous year';
         break;
+      case Period.allTime:
+        periodText = 'all time';
+        break;
     }
 
-    // Handle 0% case
-    if (percentage == 0) {
+    // -------------------------------
+    // No previous data
+    // -------------------------------
+    if (period == Period.allTime || percentage == null) {
       return Row(
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Icon(
-            Icons.horizontal_rule,
-            color: AppColors.textWhite.withOpacity(0.6),
+            Icons.info_outline,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
             size: 16,
           ),
           const SizedBox(width: 4),
           Text(
-            'No change from $periodText',
-            style: TextStyle(
-              color: AppColors.textWhite.withOpacity(0.6),
-              fontSize: AppFontSize.md,
+            'No previous data to compare',
+            style: textStyle?.copyWith(
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
             ),
           ),
         ],
       );
     }
 
-    // Determine direction and color
-    bool isIncrease = percentage > 0;
-    bool isIncome = type == CompareType.income;
+    if (percentage!.isNaN || percentage!.isInfinite) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.horizontal_rule,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+            size: 16,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Insufficient data',
+            style: textStyle?.copyWith(
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      );
+    }
 
-    // Color logic
+    double value = percentage!;
+
+    // -------------------------------
+    // 0% = No change
+    // -------------------------------
+    if (value == 0) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.horizontal_rule,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+            size: 16,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'No change from $periodText',
+            style: textStyle?.copyWith(
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // -------------------------------
+    // Increase / decrease logic
+    // -------------------------------
+    bool isIncrease = value > 0;
+
+    // Theme-based color selection
     Color color;
-    if (isIncome) {
-      color = isIncrease ? AppColors.textNeonLime : AppColors.textHotPink;
+    if (type == CompareType.income) {
+      color = isIncrease ? AppColors.green : AppColors.red;
     } else {
-      color = isIncrease ? AppColors.textHotPink : AppColors.textNeonLime;
+      color = isIncrease ? AppColors.red : AppColors.green;
     }
 
-    // Icon logic
-    IconData icon;
-    if (isIncrease) {
-      icon = Icons.arrow_upward;
-    } else {
-      icon = Icons.arrow_downward;
-    }
-
-    double absPercentage = percentage.abs();
+    IconData icon = isIncrease ? Icons.arrow_upward : Icons.arrow_downward;
+    String formattedPercent = value.abs().toStringAsFixed(1);
 
     return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
         Icon(icon, color: color, size: 16),
         const SizedBox(width: 4),
         Text(
-          '$absPercentage% ${isIncrease ? 'more' : 'less'} than $periodText',
-          style: TextStyle(
-            color: color,
-            fontSize: AppFontSize.sm,
+          '$formattedPercent% ${isIncrease ? 'more' : 'less'} than $periodText',
+          style: textStyle?.copyWith(
+            color: color, // <-- bold added here
           ),
         ),
       ],
     );
+
   }
 }

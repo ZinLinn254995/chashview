@@ -5,4 +5,7 @@ abstract class ExpenseRepository {
   Future<List<ExpenseEntity>> getExpenses(String userId);
   Future<void> updateExpense(String userId, ExpenseEntity expense);
   Future<void> deleteExpense(String userId, String expenseId);
+
+  /// 🔥 Realtime stream
+  Stream<List<ExpenseEntity>> listenExpenses(String userId);
 }

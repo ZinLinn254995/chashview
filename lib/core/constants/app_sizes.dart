@@ -1,3 +1,4 @@
+// core/constants/app_sizes.dart
 import 'package:flutter/material.dart';
 
 /// Padding and margin sizes
@@ -52,7 +53,7 @@ class AppFontWeight {
 
 /// Icon sizes
 class AppIconSize {
-  static const double sm = 16.0;
+  static const double sm = 20.0;
   static const double md = 24.0;
   static const double lg = 32.0;
   static const double xl = 48.0;

@@ -8,16 +8,19 @@ class BudgetRepositoryImpl implements BudgetRepository {
 
   BudgetRepositoryImpl(this.remote);
 
-  @override
-  Future<void> createBudget(String userId, BudgetEntity budget) async {
-    final model = BudgetModel(
-      id: budget.id,
-      limitAmount: budget.limitAmount,
-      categoryId: budget.categoryId,
-      month: budget.month,
-      createdAt: budget.createdAt,
+  BudgetModel _toModel(BudgetEntity e) {
+    return BudgetModel(
+      id: e.id,
+      categoryId: e.categoryId,
+      limitAmount: e.limitAmount,
+      month: e.month,
+      createdAt: e.createdAt,
     );
-    return remote.createBudget(userId, model);
+  }
+
+  @override
+  Future<void> createBudget(String userId, BudgetEntity e) async {
+    await remote.createBudget(userId, _toModel(e));
   }
 
   @override
@@ -26,19 +29,18 @@ class BudgetRepositoryImpl implements BudgetRepository {
   }
 
   @override
-  Future<void> updateBudget(String userId, BudgetEntity budget) async {
-    final model = BudgetModel(
-      id: budget.id,
-      limitAmount: budget.limitAmount,
-      categoryId: budget.categoryId,
-      month: budget.month,
-      createdAt: budget.createdAt,
-    );
-    return remote.updateBudget(userId, model);
+  Future<void> updateBudget(String userId, BudgetEntity e) async {
+    await remote.updateBudget(userId, _toModel(e));
   }
 
   @override
   Future<void> deleteBudget(String userId, String id) async {
-    return remote.deleteBudget(userId, id);
+    await remote.deleteBudget(userId, id);
+  }
+
+  /// 🔥 REALTIME
+  @override
+  Stream<List<BudgetEntity>> listenBudgets(String userId) {
+    return remote.listenBudgets(userId).map<List<BudgetEntity>>((list) => list);
   }
 }

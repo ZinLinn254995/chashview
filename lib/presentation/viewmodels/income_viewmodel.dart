@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import '../../domain/entities/income_entity.dart';
 import '../../domain/usecases/income/create_income_usecase.dart';
 import '../../domain/usecases/income/get_incomes_usecase.dart';
 import '../../domain/usecases/income/update_income_usecase.dart';
 import '../../domain/usecases/income/delete_income_usecase.dart';
+import '../../domain/usecases/income/listen_incomes_usecase.dart';
 import 'auth_viewmodel.dart';
 
 class IncomeViewModel extends ChangeNotifier {
@@ -13,9 +16,13 @@ class IncomeViewModel extends ChangeNotifier {
   final GetIncomesUseCase getIncomesUseCase;
   final UpdateIncomeUseCase updateIncomeUseCase;
   final DeleteIncomeUseCase deleteIncomeUseCase;
+  final ListenIncomesUseCase listenIncomesUseCase;
 
   List<IncomeEntity> incomes = [];
   bool isLoading = false;
+
+  StreamSubscription<List<IncomeEntity>>? _incomeSub;
+  bool _isListening = false;
 
   IncomeViewModel({
     required this.authViewModel,
@@ -23,9 +30,13 @@ class IncomeViewModel extends ChangeNotifier {
     required this.getIncomesUseCase,
     required this.updateIncomeUseCase,
     required this.deleteIncomeUseCase,
+    required this.listenIncomesUseCase,
   }) {
-    /// 🔥 Auto listen for user switching
+    /// Auto listen for user switching
     authViewModel.onUserChanged.addListener(_handleUserChanged);
+
+    // Try to start realtime subscription for current user (if any)
+    _subscribeToIncomes();
   }
 
   void _handleUserChanged() {
@@ -33,11 +44,50 @@ class IncomeViewModel extends ChangeNotifier {
     incomes = [];
     notifyListeners();
 
-    // Auto reload
-    loadIncomes();
+    // Re-subscribe
+    _subscribeToIncomes();
   }
 
-  /// Load income list for current user
+  /// Subscribe to realtime incomes for current user
+  void _subscribeToIncomes() {
+    // cancel existing subscription
+    _incomeSub?.cancel();
+    _incomeSub = null;
+    _isListening = false;
+
+    final userId = authViewModel.user?.uid;
+    if (userId == null) {
+      // no user — nothing to subscribe
+      return;
+    }
+
+    try {
+      isLoading = true;
+      notifyListeners();
+
+      _incomeSub = listenIncomesUseCase.call(userId).listen(
+            (List<IncomeEntity> list) {
+          incomes = list;
+          isLoading = false;
+          _isListening = true;
+          notifyListeners();
+        },
+        onError: (err, stack) {
+          // On error, fall back to one-time fetch to avoid empty UI
+          _isListening = false;
+          isLoading = false;
+          notifyListeners();
+        },
+      );
+    } catch (e) {
+      // subscribe failure – fallback
+      _isListening = false;
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// One-time fetch (fallback)
   Future<void> loadIncomes() async {
     final userId = authViewModel.user?.uid;
     if (userId == null) {
@@ -62,7 +112,10 @@ class IncomeViewModel extends ChangeNotifier {
 
     await createIncomeUseCase.call(userId, income);
 
-    await loadIncomes();
+    // If not listening, refresh one-time; if listening, listener will update automatically
+    if (!_isListening) {
+      await loadIncomes();
+    }
   }
 
   /// Update income
@@ -72,7 +125,9 @@ class IncomeViewModel extends ChangeNotifier {
 
     await updateIncomeUseCase.call(userId, income);
 
-    await loadIncomes();
+    if (!_isListening) {
+      await loadIncomes();
+    }
   }
 
   /// Delete income
@@ -82,6 +137,15 @@ class IncomeViewModel extends ChangeNotifier {
 
     await deleteIncomeUseCase.call(userId, incomeId);
 
-    await loadIncomes();
+    if (!_isListening) {
+      await loadIncomes();
+    }
+  }
+
+  @override
+  void dispose() {
+    _incomeSub?.cancel();
+    authViewModel.onUserChanged.removeListener(_handleUserChanged);
+    super.dispose();
   }
 }

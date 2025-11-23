@@ -5,4 +5,7 @@ abstract class IncomeRepository {
   Future<List<IncomeEntity>> getIncomes(String userId);
   Future<void> updateIncome(String userId, IncomeEntity income);
   Future<void> deleteIncome(String userId, String incomeId);
+
+  /// Realtime stream of incomes (list)
+  Stream<List<IncomeEntity>> listenIncomes(String userId);
 }

@@ -8,15 +8,18 @@ class CategoryRepositoryImpl implements CategoryRepository {
 
   CategoryRepositoryImpl(this.remoteDataSource);
 
+  CategoryModel _toModel(CategoryEntity e) {
+    return CategoryModel(
+      id: e.id,
+      name: e.name,
+      createdAt: e.createdAt,
+      updatedAt: e.updatedAt,
+    );
+  }
+
   @override
   Future<void> create(String userId, String type, CategoryEntity entity) async {
-    final model = CategoryModel(
-      id: entity.id,
-      name: entity.name,
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
-    );
-    await remoteDataSource.createCategory(userId, type, model);
+    await remoteDataSource.createCategory(userId, type, _toModel(entity));
   }
 
   @override
@@ -32,13 +35,7 @@ class CategoryRepositoryImpl implements CategoryRepository {
 
   @override
   Future<void> update(String userId, String type, CategoryEntity entity) async {
-    final model = CategoryModel(
-      id: entity.id,
-      name: entity.name,
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
-    );
-    await remoteDataSource.updateCategory(userId, type, model);
+    await remoteDataSource.updateCategory(userId, type, _toModel(entity));
   }
 
   @override
@@ -46,7 +43,7 @@ class CategoryRepositoryImpl implements CategoryRepository {
     await remoteDataSource.deleteCategory(userId, type, id);
   }
 
-  /// Optional: Stream for realtime updates
+  /// 🔥 Realtime
   @override
   Stream<List<CategoryEntity>> listen(String userId, String type) {
     return remoteDataSource.listenToCategories(userId, type).map((models) {

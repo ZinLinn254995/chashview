@@ -29,19 +29,27 @@ import '../domain/usecases/auth/get_current_user_usecase.dart';
 import '../domain/usecases/budget/create_budget_usecase.dart';
 import '../domain/usecases/budget/delete_budget_usecase.dart';
 import '../domain/usecases/budget/get_budgets_usecase.dart';
+import '../domain/usecases/budget/listen_budgets_usecase.dart';
 import '../domain/usecases/budget/update_budget_usecase.dart';
 import '../domain/usecases/category/create_category_usecase.dart';
+import '../domain/usecases/category/listen_categories_usecase.dart';
 import '../domain/usecases/expense/create_expense_usecase.dart';
 import '../domain/usecases/expense/delete_expense_usecase.dart';
 import '../domain/usecases/expense/get_expenses_usecase.dart';
+import '../domain/usecases/expense/listen_expenses_usecase.dart';
 import '../domain/usecases/expense/update_expense_usecase.dart';
 import '../domain/usecases/income/create_income_usecase.dart';
 import '../domain/usecases/income/delete_income_usecase.dart';
 import '../domain/usecases/income/get_incomes_usecase.dart';
+import '../domain/usecases/income/listen_incomes_usecase.dart';
 import '../domain/usecases/income/update_income_usecase.dart';
+import '../domain/usecases/summary/calculate_net_usecase.dart';
+import '../domain/usecases/summary/calculate_total_expense_usecase.dart';
+import '../domain/usecases/summary/calculate_total_income_usecase.dart';
 import '../domain/usecases/target/create_target_usecase.dart';
 import '../domain/usecases/target/delete_target_usecase.dart';
 import '../domain/usecases/target/get_targets_usecase.dart';
+import '../domain/usecases/target/listen_targets_usecase.dart';
 import '../domain/usecases/target/update_target_usecase.dart';
 import '../domain/usecases/title/create_title_usecase.dart';
 import '../domain/usecases/category/delete_category_usecase.dart';
@@ -50,6 +58,7 @@ import '../domain/usecases/category/get_categories_usecase.dart';
 import '../domain/usecases/auth/sign_in_with_google_usecase.dart';
 import '../domain/usecases/auth/sign_out_usecase.dart';
 import '../domain/usecases/title/get_titles_usecase.dart';
+import '../domain/usecases/title/listen_titles_usecase.dart';
 import '../domain/usecases/title/update_title_usecase.dart';
 import '../domain/usecases/category/update_category_usecase.dart';
 import '../presentation/viewmodels/auth_viewmodel.dart';
@@ -58,16 +67,14 @@ import '../presentation/viewmodels/category_viewmodel.dart';
 import '../presentation/viewmodels/currency_viewmodel.dart';
 import '../presentation/viewmodels/expense_viewmodel.dart';
 import '../presentation/viewmodels/income_viewmodel.dart';
-import '../presentation/viewmodels/main_viewmodel.dart';
 import '../presentation/viewmodels/splash_viewmodel.dart';
+import '../presentation/viewmodels/summary_viewmodel.dart';
 import '../presentation/viewmodels/target_viewmodel.dart';
 import '../presentation/viewmodels/title_viewmodel.dart';
 
 final sl = GetIt.instance;
 
 Future<void> init() async {
-  // 🔹 ViewModels
-  sl.registerFactory<MainViewModel>(() => MainViewModel());
 
   // External
   sl.registerLazySingleton(() => FirebaseAuth.instance);
@@ -121,6 +128,8 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetCategoriesUseCase(sl()));
   sl.registerLazySingleton(() => UpdateCategoryUseCase(sl()));
   sl.registerLazySingleton(() => DeleteCategoryUseCase(sl()));
+  sl.registerLazySingleton(() => ListenCategoriesUseCase(sl()));
+
 
   // Category ViewModel MUST be factory
   sl.registerFactory(
@@ -129,7 +138,8 @@ Future<void> init() async {
       getCategoriesUseCase: sl(),
       updateCategoryUseCase: sl(),
       deleteCategoryUseCase: sl(),
-      authViewModel: sl(), // ← Singleton auth
+      authViewModel: sl(),
+      listenCategoriesUseCase: sl()
     ),
   );
 
@@ -145,6 +155,8 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetTitlesUseCase(sl()));
   sl.registerLazySingleton(() => UpdateTitleUseCase(sl()));
   sl.registerLazySingleton(() => DeleteTitleUseCase(sl()));
+  sl.registerLazySingleton(() => ListenTitlesUseCase(sl()));
+
 
   sl.registerFactory(
     () => TitleViewModel(
@@ -154,6 +166,7 @@ Future<void> init() async {
       getTitlesUseCase: sl(),
       updateTitleUseCase: sl(),
       deleteTitleUseCase: sl(),
+      listenTitlesUseCase: sl(),
     ),
   );
 
@@ -174,6 +187,8 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetIncomesUseCase(sl()));
   sl.registerLazySingleton(() => UpdateIncomeUseCase(sl()));
   sl.registerLazySingleton(() => DeleteIncomeUseCase(sl()));
+  sl.registerLazySingleton(() => ListenIncomesUseCase(sl()));
+
 
 // 4) ViewModel
   sl.registerFactory<IncomeViewModel>(
@@ -183,6 +198,7 @@ Future<void> init() async {
       getIncomesUseCase: sl(),
       updateIncomeUseCase: sl(),
       deleteIncomeUseCase: sl(),
+      listenIncomesUseCase: sl(),
     ),
   );
 
@@ -203,6 +219,9 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetExpensesUseCase(sl()));
   sl.registerLazySingleton(() => UpdateExpenseUseCase(sl()));
   sl.registerLazySingleton(() => DeleteExpenseUseCase(sl()));
+  sl.registerLazySingleton(() => ListenExpensesUseCase(sl()));
+
+
 
 // ViewModel
   sl.registerFactory<ExpenseViewModel>(
@@ -212,6 +231,7 @@ Future<void> init() async {
       getExpensesUseCase: sl(),
       updateExpenseUseCase: sl(),
       deleteExpenseUseCase: sl(),
+      listenExpensesUseCase: sl(),
     ),
   );
 
@@ -224,6 +244,8 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetBudgetsUseCase(sl()));
   sl.registerLazySingleton(() => UpdateBudgetUseCase(sl()));
   sl.registerLazySingleton(() => DeleteBudgetUseCase(sl()));
+  sl.registerLazySingleton(() => ListenBudgetsUseCase(sl()));
+
 
   sl.registerFactory<BudgetViewModel>(() => BudgetViewModel(
     authViewModel: sl(),
@@ -231,6 +253,7 @@ Future<void> init() async {
     getBudgetsUseCase: sl(),
     updateBudgetUseCase: sl(),
     deleteBudgetUseCase: sl(),
+    listenBudgetsUseCase: sl(),
   ));
 
 // ===== TARGET MODULE =====
@@ -242,6 +265,9 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetTargetsUseCase(sl()));
   sl.registerLazySingleton(() => UpdateTargetUseCase(sl()));
   sl.registerLazySingleton(() => DeleteTargetUseCase(sl()));
+  sl.registerLazySingleton(() => ListenTargetsUseCase(sl()));
+
+
 
   sl.registerFactory<TargetViewModel>(() => TargetViewModel(
     authViewModel: sl(),
@@ -249,7 +275,31 @@ Future<void> init() async {
     getTargetsUseCase: sl(),
     updateTargetUseCase: sl(),
     deleteTargetUseCase: sl(),
+    listenTargetsUseCase: sl(),
   ));
+
+// ===== SUMMARY USECASES =====
+  sl.registerLazySingleton<CalculateTotalIncomeUseCase>(
+          () => CalculateTotalIncomeUseCase(sl<IncomeRepository>()));
+
+  sl.registerLazySingleton<CalculateTotalExpenseUseCase>(
+          () => CalculateTotalExpenseUseCase(sl<ExpenseRepository>()));
+
+  sl.registerLazySingleton<CalculateNetUseCase>(
+          () => CalculateNetUseCase(
+        sl<CalculateTotalIncomeUseCase>(),
+        sl<CalculateTotalExpenseUseCase>(),
+      ));
+
+  // ViewModel MUST be factory if you want multiple instances in different screens
+  sl.registerFactory<SummaryViewModel>(
+        () => SummaryViewModel(
+      authViewModel: sl<AuthViewModel>(),
+      totalIncomeUseCase: sl<CalculateTotalIncomeUseCase>(),
+      totalExpenseUseCase: sl<CalculateTotalExpenseUseCase>(),
+      netUseCase: sl<CalculateNetUseCase>(),
+    ),
+  );
 
 
 }

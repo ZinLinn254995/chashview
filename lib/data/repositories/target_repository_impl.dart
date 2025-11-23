@@ -8,15 +8,18 @@ class TargetRepositoryImpl implements TargetRepository {
 
   TargetRepositoryImpl(this.remote);
 
-  @override
-  Future<void> createTarget(String userId, TargetEntity target) async {
-    final model = TargetModel(
-      id: target.id,
-      title: target.title,
-      goalAmount: target.goalAmount,
-      createdAt: target.createdAt,
+  TargetModel _toModel(TargetEntity e) {
+    return TargetModel(
+      id: e.id,
+      title: e.title,
+      goalAmount: e.goalAmount,
+      createdAt: e.createdAt,
     );
-    return remote.createTarget(userId, model);
+  }
+
+  @override
+  Future<void> createTarget(String userId, TargetEntity e) async {
+    await remote.createTarget(userId, _toModel(e));
   }
 
   @override
@@ -25,18 +28,18 @@ class TargetRepositoryImpl implements TargetRepository {
   }
 
   @override
-  Future<void> updateTarget(String userId, TargetEntity target) async {
-    final model = TargetModel(
-      id: target.id,
-      title: target.title,
-      goalAmount: target.goalAmount,
-      createdAt: target.createdAt,
-    );
-    return remote.updateTarget(userId, model);
+  Future<void> updateTarget(String userId, TargetEntity e) async {
+    await remote.updateTarget(userId, _toModel(e));
   }
 
   @override
   Future<void> deleteTarget(String userId, String id) async {
-    return remote.deleteTarget(userId, id);
+    await remote.deleteTarget(userId, id);
+  }
+
+  /// 🔥 Realtime
+  @override
+  Stream<List<TargetEntity>> listenTargets(String userId) {
+    return remote.listenTargets(userId).map<List<TargetEntity>>((list) => list);
   }
 }

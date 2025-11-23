@@ -5,4 +5,7 @@ abstract class BudgetRepository {
   Future<List<BudgetEntity>> getBudgets(String userId);
   Future<void> updateBudget(String userId, BudgetEntity budget);
   Future<void> deleteBudget(String userId, String budgetId);
+
+  /// 🔥 Realtime stream
+  Stream<List<BudgetEntity>> listenBudgets(String userId);
 }

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../viewmodels/main_viewmodel.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../widgets/circular_progress_widget.dart';
@@ -30,7 +28,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.read<MainViewModel>();
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -39,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       body: SingleChildScrollView(
         padding: EdgeInsets.all(AppPadding.sm),
-        child: Column(
+        /*child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
@@ -203,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // TODO: Add content here later
             ),
           ],
-        ),
+        ),*/
       ),
     );
   }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../viewmodels/category_viewmodel.dart';
 
 class AddCategoryDialog extends StatelessWidget {
@@ -24,10 +23,11 @@ class AddCategoryDialog extends StatelessWidget {
           child: const Text("Cancel"),
         ),
         ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
             final name = _controller.text.trim();
             if (name.isNotEmpty) {
-              Provider.of<CategoryViewModel>(context, listen: false)
+              // Wait until category is added before dismissing
+              await Provider.of<CategoryViewModel>(context, listen: false)
                   .addCategory(type, name);
             }
             Navigator.pop(context);

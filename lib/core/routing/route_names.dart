@@ -12,4 +12,5 @@ class RouteNames {
   static const String lessonThree = '/lessonThree';
   static const String lessonFour = '/lessonFour';
   static const String category = '/category';
+  static const String incomeByTitle = '/income_by_title';
 }

@@ -5,10 +5,8 @@ class ExpenseModel extends ExpenseEntity {
     required super.id,
     required super.titleId,
     required super.amount,
-    required super.categoryId,
     required super.date,
     required super.createdAt,
-    required super.isBookmarked,
   });
 
   factory ExpenseModel.fromJson(Map<String, dynamic> json, String id) {
@@ -16,10 +14,8 @@ class ExpenseModel extends ExpenseEntity {
       id: id,
       titleId: json['titleId'] as String,
       amount: (json['amount'] as num).toDouble(),
-      categoryId: json['categoryId'] as String,
       date: DateTime.parse(json['date'] as String),
       createdAt: DateTime.parse(json['createdAt'] as String),
-      isBookmarked: json['isBookmarked'] as bool,
     );
   }
 
@@ -27,10 +23,8 @@ class ExpenseModel extends ExpenseEntity {
     return {
       'titleId': titleId,
       'amount': amount,
-      'categoryId': categoryId,
       'date': date.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
-      'isBookmarked': isBookmarked,
     };
   }
 }

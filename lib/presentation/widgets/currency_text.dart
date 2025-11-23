@@ -83,7 +83,7 @@ class CurrencyText extends StatelessWidget {
         const TextStyle(
           fontSize: 20,
           color: Colors.white,
-          fontWeight: AppFontWeight.bold,
+          //fontWeight: AppFontWeight.bold,
         );
 
     return RichText(
@@ -101,7 +101,7 @@ class CurrencyText extends StatelessWidget {
                     ? baseStyle.fontSize! * decimalFontSizeRatio
                     : baseStyle.fontSize,
                 color: baseStyle.color?.withOpacity(0.8),
-                fontWeight: AppFontWeight.bold,
+                //fontWeight: AppFontWeight.bold,
               ),
             ),
           if (suffix.isNotEmpty)

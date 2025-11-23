@@ -1,10 +1,12 @@
+// lib/presentation/screens/settings/settings_screen.dart
+
 import 'package:chashview/core/routing/route_names.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_currency.dart';
-import '../../viewmodels/auth_viewmodel.dart';
+// import '../../viewmodels/auth_viewmodel.dart'; // မလိုတော့တဲ့ viewmodel တွေ ဖျက်နိုင်ပါတယ်
 import '../../viewmodels/currency_viewmodel.dart';
-import '../../viewmodels/main_viewmodel.dart';
+// import '../../viewmodels/main_viewmodel.dart'; // 🔥 ဖယ်ရှားပါ
 import '../../widgets/circular_progress_widget.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -19,10 +21,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.read<MainViewModel>();
     final currencyViewModel = context.watch<CurrencyViewModel>();
 
     return Scaffold(
+      appBar: AppBar(title: const Text("Settings")),
       backgroundColor: Colors.black,
       body: Center(
         child: SingleChildScrollView(
@@ -44,34 +46,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 20),
 
+              // 🔥 Lesson Buttons များကို Navigator.pushNamed ဖြင့် အစားထိုးခြင်း
               ElevatedButton(
                 onPressed: () {
-                  viewModel.navigateTo(RouteNames.lessonOne, hideBottomNav: true);
+                  // BottomNav ကို ဖျောက်ပြီး route အသစ်ကို push ပါ
+                  Navigator.pushNamed(context, RouteNames.lessonOne);
                 },
                 child: const Text('Lesson 1'),
               ),
               ElevatedButton(
                 onPressed: () {
-                  viewModel.navigateTo(RouteNames.lessonTwo, hideBottomNav: true);
+                  Navigator.pushNamed(context, RouteNames.lessonTwo);
                 },
                 child: const Text('Lesson 2'),
               ),
               ElevatedButton(
                 onPressed: () {
-                  viewModel.navigateTo(RouteNames.lessonThree, hideBottomNav: true);
+                  Navigator.pushNamed(context, RouteNames.lessonThree);
                 },
                 child: const Text('Lesson 3'),
               ),
               ElevatedButton(
                 onPressed: () {
-                  viewModel.navigateTo(RouteNames.lessonFour, hideBottomNav: true);
+                  Navigator.pushNamed(context, RouteNames.lessonFour);
                 },
                 child: const Text('Lesson 4'),
               ),
 
               ElevatedButton(
                 onPressed: () {
-                  viewModel.navigateTo(RouteNames.category, hideBottomNav: true);
+                  // Category List ကို သွားရန်
+                  Navigator.pushNamed(context, RouteNames.category);
                 },
                 child: const Text('Go to Category List'),
               ),

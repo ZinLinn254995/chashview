@@ -8,19 +8,19 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
 
   ExpenseRepositoryImpl(this.remoteDataSource);
 
-  @override
-  Future<void> createExpense(String userId, ExpenseEntity expense) async {
-    final model = ExpenseModel(
-      id: expense.id,
-      titleId: expense.titleId,
-      amount: expense.amount,
-      categoryId: expense.categoryId,
-      date: expense.date,
-      createdAt: expense.createdAt,
-      isBookmarked: expense.isBookmarked,
+  ExpenseModel _toModel(ExpenseEntity e) {
+    return ExpenseModel(
+      id: e.id,
+      titleId: e.titleId,
+      amount: e.amount,
+      date: e.date,
+      createdAt: e.createdAt,
     );
+  }
 
-    await remoteDataSource.createExpense(userId, model);
+  @override
+  Future<void> createExpense(String userId, ExpenseEntity e) async {
+    await remoteDataSource.createExpense(userId, _toModel(e));
   }
 
   @override
@@ -29,22 +29,19 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   }
 
   @override
-  Future<void> updateExpense(String userId, ExpenseEntity expense) async {
-    final model = ExpenseModel(
-      id: expense.id,
-      titleId: expense.titleId,
-      amount: expense.amount,
-      categoryId: expense.categoryId,
-      date: expense.date,
-      createdAt: expense.createdAt,
-      isBookmarked: expense.isBookmarked,
-    );
-
-    await remoteDataSource.updateExpense(userId, model);
+  Future<void> updateExpense(String userId, ExpenseEntity e) async {
+    await remoteDataSource.updateExpense(userId, _toModel(e));
   }
 
   @override
   Future<void> deleteExpense(String userId, String expenseId) async {
     await remoteDataSource.deleteExpense(userId, expenseId);
+  }
+
+  /// 🔥 REALTIME
+  @override
+  Stream<List<ExpenseEntity>> listenExpenses(String userId) {
+    return remoteDataSource.listenExpenses(userId)
+        .map<List<ExpenseEntity>>((list) => list);
   }
 }

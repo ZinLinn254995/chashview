@@ -31,7 +31,7 @@ users
     │   │   ├── categoryId: "catId_002"
     │   │   ├── date: "2025-11-12"
     │   │   ├── createdAt: "2025-11-12T10:20:00Z"
-    │   │   └── isBookmarked: false
+
     │   ├── incomeId_002
     │   │   ├── titleId: "titleId_002"
     │   │   ├── amount: 50

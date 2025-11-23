@@ -1,8 +1,10 @@
+// lib/presentation/screens/category/category_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../presentation/viewmodels/category_viewmodel.dart';
-import '../../../presentation/viewmodels/main_viewmodel.dart';
+import '../../viewmodels/category_viewmodel.dart';
 import '../../widgets/add_category_dialog.dart';
+
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
@@ -12,27 +14,43 @@ class CategoryScreen extends StatefulWidget {
 }
 
 class _CategoryScreenState extends State<CategoryScreen> {
+  String _categoryType = "income";
+  bool _didLoadCategories = false;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-    // Load categories based on type argument
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final mainVM = Provider.of<MainViewModel>(context, listen: false);
-      final type = mainVM.currentArguments?["type"] ?? "income";
+    // 1. Argument ကနေ type ကို ယူပါ
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic>) {
+      // Argument ကနေ ယူရမယ့် type ကို update လုပ်
+      final newType = args["type"] as String? ?? "income";
 
-      Provider.of<CategoryViewModel>(context, listen: false)
-          .loadCategories(type);
-    });
+      // 2. Type ပြောင်းမှသာ Load လုပ်ရမယ့် အခြေအနေ (ဒါမှမဟုတ် ပထမဆုံးအကြိမ် load လုပ်ဖို့)
+      if (newType != _categoryType || !_didLoadCategories) {
+
+        _categoryType = newType;
+
+        // 3. Data ကို တစ်ကြိမ်သာ Load လုပ်ပါ (မပြီးခင် ထပ်မ load မိအောင်)
+        Provider.of<CategoryViewModel>(context, listen: false)
+            .loadCategories(_categoryType);
+
+        _didLoadCategories = true; // Load လုပ်ပြီးပြီဟု မှတ်သား
+      }
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
-    final mainVM = Provider.of<MainViewModel>(context);
-    final type = mainVM.currentArguments?["type"] ?? "income";
+    final type = _categoryType;
     final categoryVM = Provider.of<CategoryViewModel>(context);
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text("Categories"),
+      ),
 
       floatingActionButton: FloatingActionButton(
         onPressed: () {
