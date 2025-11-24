@@ -17,12 +17,15 @@ class CategoryViewModel extends ChangeNotifier {
   final ListenCategoriesUseCase listenCategoriesUseCase;
   final AuthViewModel authViewModel;
 
-  List<CategoryEntity> categories = [];
+  // 🔥 ၁။ List နှစ်ခု သီးသန့်ခွဲထားခြင်း
+  List<CategoryEntity> incomeCategories = [];
+  List<CategoryEntity> expenseCategories = [];
+
   bool isLoading = false;
 
-  String? _currentType;
-  StreamSubscription<List<CategoryEntity>>? _sub;
-  bool _isListening = false;
+  // Streams for listening
+  StreamSubscription<List<CategoryEntity>>? _incomeSub;
+  StreamSubscription<List<CategoryEntity>>? _expenseSub;
 
   CategoryViewModel({
     required this.createCategoryUseCase,
@@ -33,18 +36,28 @@ class CategoryViewModel extends ChangeNotifier {
     required this.authViewModel,
   }) {
     authViewModel.onUserChanged.addListener(_handleUserChanged);
+    // App စစချင်း User ရှိနေရင် Listen စလုပ်ပါ
+    if (authViewModel.user != null) {
+      _initStreams();
+    }
   }
 
   void _handleUserChanged() {
-    categories = [];
-    notifyListeners();
-    if (_currentType != null) _subscribe(_currentType!);
+    if (authViewModel.user == null) {
+      // User logout လုပ်သွားရင် Data ရှင်းပြီး Stream ရပ်မယ်
+      incomeCategories = [];
+      expenseCategories = [];
+      _cancelStreams();
+      notifyListeners();
+    } else {
+      // User login ဝင်လာရင် Stream စဖွင့်မယ်
+      _initStreams();
+    }
   }
 
-  void _subscribe(String type) {
-    _sub?.cancel();
-    _sub = null;
-    _isListening = false;
+  // 🔥 ၂။ Income ရော Expense ရော တပြိုင်နက် Listen လုပ်ခြင်း
+  void _initStreams() {
+    _cancelStreams(); // အဟောင်းရှိရင် အရင်ဖြတ်
 
     final uid = authViewModel.user?.uid;
     if (uid == null) return;
@@ -52,44 +65,60 @@ class CategoryViewModel extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
-    _sub = listenCategoriesUseCase.call(uid, type).listen(
-          (list) {
-        categories = list;
-        _isListening = true;
-        isLoading = false;
-        notifyListeners();
-      },
-      onError: (e) {
-        _isListening = false;
-        isLoading = false;
-        notifyListeners();
-      },
+    // Listen to Income Categories
+    _incomeSub = listenCategoriesUseCase.call(uid, 'income').listen(
+            (list) {
+          incomeCategories = list;
+          isLoading = false; // Data ရောက်လာရင် loading ပိတ်
+          notifyListeners();
+        },
+        onError: (e) {
+          debugPrint("Income Stream Error: $e");
+        }
+    );
+
+    // Listen to Expense Categories
+    _expenseSub = listenCategoriesUseCase.call(uid, 'expense').listen(
+            (list) {
+          expenseCategories = list;
+          isLoading = false;
+          notifyListeners();
+        },
+        onError: (e) {
+          debugPrint("Expense Stream Error: $e");
+        }
     );
   }
 
-  Future<void> loadCategories(String type) async {
-    _currentType = type;
-    final uid = authViewModel.user?.uid;
-    if (uid == null) return;
-
-    isLoading = true;
-    notifyListeners();
-
-    categories = await getCategoriesUseCase.call(uid, type);
-
-    isLoading = false;
-    notifyListeners();
+  void _cancelStreams() {
+    _incomeSub?.cancel();
+    _expenseSub?.cancel();
+    _incomeSub = null;
+    _expenseSub = null;
   }
 
-  /// 🔥 Fixed: auto-generate id and timestamp
+  // 🔥 ၃။ UI ကနေ Type အလိုက် Data လိုချင်ရင် ခေါ်သုံးရန် Helper
+  List<CategoryEntity> getCategoriesByType(String type) {
+    if (type == 'income') {
+      return incomeCategories;
+    } else if (type == 'expense') {
+      return expenseCategories;
+    }
+    return [];
+  }
+
+  /// CRUD Operations (Type ထည့်ပေးရမည်)
+
   Future<void> addCategory(String type, String name) async {
     final uid = authViewModel.user?.uid;
     if (uid == null) return;
 
-    final exists = categories.any((c) => c.name.toLowerCase() == name.toLowerCase());
+    // Validation: Check duplicates in the specific list
+    final targetList = type == 'income' ? incomeCategories : expenseCategories;
+    final exists = targetList.any((c) => c.name.toLowerCase() == name.toLowerCase());
+
     if (exists) return;
 
-    // Auto-generate Firebase key
     final newId = FirebaseDatabase.instance.ref().push().key!;
     final now = DateTime.now();
 
@@ -101,19 +130,19 @@ class CategoryViewModel extends ChangeNotifier {
     );
 
     await createCategoryUseCase.call(uid, type, newCategory);
-
-    if (!_isListening) await loadCategories(type);
+    // Stream က auto update လုပ်ပေးမှာမို့ loadCategories ပြန်ခေါ်စရာမလိုပါ
   }
 
   Future<void> editCategory(String type, String categoryId, String newName) async {
     final uid = authViewModel.user?.uid;
     if (uid == null) return;
 
+    final targetList = type == 'income' ? incomeCategories : expenseCategories;
+
     CategoryEntity? existing;
     try {
-      existing = categories.firstWhere((c) => c.id == categoryId);
+      existing = targetList.firstWhere((c) => c.id == categoryId);
     } catch (e) {
-      // Category not found, just return
       return;
     }
 
@@ -123,23 +152,17 @@ class CategoryViewModel extends ChangeNotifier {
     );
 
     await updateCategoryUseCase.call(uid, type, updated);
-
-    if (!_isListening) await loadCategories(type);
   }
-
 
   Future<void> removeCategory(String type, String id) async {
     final uid = authViewModel.user?.uid;
     if (uid == null) return;
-
     await deleteCategoryUseCase.call(uid, type, id);
-
-    if (!_isListening) await loadCategories(type);
   }
 
   @override
   void dispose() {
-    _sub?.cancel();
+    _cancelStreams();
     authViewModel.onUserChanged.removeListener(_handleUserChanged);
     super.dispose();
   }

@@ -23,15 +23,14 @@ class PeriodComparisonPieChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
 
     // Color Logic
     final Color mainColor =
-    type == ChartType.income ? colorScheme.primary : colorScheme.error;
+    type == ChartType.income ? colorScheme.primary : colorScheme.primary;
 
     final Color secondaryColor = type == ChartType.income
         ? colorScheme.secondary
-        : colorScheme.errorContainer;
+        : colorScheme.secondary;
 
     // Calculate Sections
     List<PieChartSectionData> sections;

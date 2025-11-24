@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 
 import '../../../domain/entities/category_entity.dart';
-import '../../../domain/entities/income_entity.dart';
 import '../../../domain/entities/title_entity.dart';
-
 import '../../../core/constants/app_sizes.dart';
 import 'currency_text.dart';
 
-class CategoryTitleExpansionList extends StatelessWidget {
+// ၁။ Type ခွဲခြားရန် Enum သတ်မှတ်ခြင်း
+enum TransactionType { income, expense }
+
+class CategoryTitleExpansionList<T> extends StatelessWidget {
   final List<CategoryEntity> categories;
   final List<TitleEntity> titles;
-  final List<IncomeEntity> incomes;
+  final List<T> items; // IncomeEntity or ExpenseEntity list
+  final TransactionType type; // income or expense
+
+  // Data များကို Entity ထဲမှ ဆွဲထုတ်ရန် Functions
+  final double Function(T) getAmount;
+  final String Function(T) getTitleId;
 
   final Function(String categoryId, TitleEntity title) onTitleTap;
   final Function(String categoryId, TitleEntity title) onBookmarkTap;
@@ -19,7 +25,10 @@ class CategoryTitleExpansionList extends StatelessWidget {
     super.key,
     required this.categories,
     required this.titles,
-    required this.incomes,
+    required this.items,
+    required this.type,
+    required this.getAmount,
+    required this.getTitleId,
     required this.onTitleTap,
     required this.onBookmarkTap,
   });
@@ -32,74 +41,76 @@ class CategoryTitleExpansionList extends StatelessWidget {
 
     final colorScheme = Theme.of(context).colorScheme;
 
-    // ၁။ Percentage တွက်ရန်အတွက် Grand Total ကို အရင်ရှာပါ
-    final double grandTotalIncome = incomes.fold(0.0, (sum, item) => sum + item.amount);
+    // ၂။ Color Logic (Type ပေါ်မူတည်ပြီး အရောင်ရွေးချယ်ခြင်း)
+    final isExpense = type == TransactionType.expense;
 
-    // 🔥 Pre-calculate and Sort Logic Starts Here 🔥
-    // Category တစ်ခုချင်းစီအတွက် Data တွေကို ကြိုတွက်ပြီး List အသစ်တစ်ခုဆောက်ပါမယ်
+    // Active Colors (Data ရှိလျှင် သုံးမည့်အရောင်များ)
+    final activeContainerColor = isExpense ? colorScheme.primaryContainer : colorScheme.primaryContainer;
+    final activeContentColor = isExpense ? colorScheme.onPrimaryContainer : colorScheme.onPrimaryContainer;
+
+    // Text Colors
+    final primaryTextColor = isExpense ? colorScheme.primary : colorScheme.primary;
+
+    // Calculate Grand Total
+    final double grandTotal = items.fold(0.0, (sum, item) => sum + getAmount(item));
+
+    // ၃။ Data Sorting & Grouping Logic
     final sortedData = categories.map((category) {
-      // Title များရှာဖွေခြင်း
+      // A. Category အောက်ရှိ Title များကိုရှာခြင်း
       final categoryTitles = titles.where((title) {
         return title.categoryId == category.id;
       }).toList();
 
       final categoryTitleIds = categoryTitles.map((t) => t.id).toSet();
 
-      // Income Records များရှာဖွေခြင်း
-      final categoryIncomes = incomes.where((income) {
-        return categoryTitleIds.contains(income.titleId);
+      // B. Title ID များနှင့် ကိုက်ညီသော Item များကိုရှာခြင်း (Generic T)
+      final categoryItems = items.where((item) {
+        return categoryTitleIds.contains(getTitleId(item));
       }).toList();
 
-      // Total Amount တွက်ခြင်း
-      final double categoryTotalAmount = categoryIncomes.fold(0.0, (sum, item) => sum + item.amount);
+      final double categoryTotalAmount = categoryItems.fold(0.0, (sum, item) => sum + getAmount(item));
 
-      // Data များကို Return ပြန်ပေးခြင်း (Dart 3 Record ကိုသုံးထားပါတယ်)
       return (
       category: category,
       titles: categoryTitles,
-      incomes: categoryIncomes,
+      items: categoryItems,
       totalAmount: categoryTotalAmount,
       );
     }).toList();
 
-    // 🔥 Sorting: Amount များရာမှ နည်းရာသို့ စီခြင်း
-    // Amount တူနေရင် (ဥပမာ - 0 နဲ့ 0) မူလအစီအစဉ်အတိုင်းထားပါမယ်
+    // Total Amount အများဆုံးကို အပေါ်ဆုံးမှာထားခြင်း
     sortedData.sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
 
     return ListView.separated(
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
-      itemCount: sortedData.length, // sortedData ကို အသုံးပြုပါ
+      itemCount: sortedData.length,
       separatorBuilder: (context, index) => AppGap.sm,
       itemBuilder: (context, index) {
-        // ကြိုတွက်ထားတဲ့ Data တွေကို ဒီနေရာမှာ ပြန်ခေါ်သုံးပါမယ်
         final data = sortedData[index];
         final category = data.category;
         final categoryTitles = data.titles;
-        // final categoryIncomes = data.incomes; // လိုအပ်ရင်သုံးရန်
         final categoryTotalAmount = data.totalAmount;
-
-        // ၃။ Data တွက်ချက်ခြင်း (အပေါ်မှာတွက်ပြီးသားမို့ တိုက်ရိုက်သုံးနိုင်ပါပြီ)
         final int titlesCount = categoryTitles.length;
-        final int recordsCount = data.incomes.length;
+        final int recordsCount = data.items.length;
 
-        final double percentage = grandTotalIncome == 0
+        final double percentage = grandTotal == 0
             ? 0.0
-            : (categoryTotalAmount / grandTotalIncome) * 100;
+            : (categoryTotalAmount / grandTotal) * 100;
 
-        // ၄။ Category Color Logic (Parent/Header)
-        final bool hasCategoryIncome = categoryTotalAmount > 0;
+        final bool hasCategoryData = categoryTotalAmount > 0;
 
-        final Color headerBackgroundColor = hasCategoryIncome
-            ? colorScheme.primaryContainer
+        // Header Styling Logic
+        final Color headerBackgroundColor = hasCategoryData
+            ? activeContainerColor
             : colorScheme.surfaceContainerLow;
 
-        final Color headerContentColor = hasCategoryIncome
-            ? colorScheme.onPrimaryContainer
+        final Color headerContentColor = hasCategoryData
+            ? activeContentColor
             : colorScheme.onSurface;
 
-        final Color headerSubtitleColor = hasCategoryIncome
-            ? colorScheme.onPrimaryContainer.withValues(alpha: 0.8)
+        final Color headerSubtitleColor = hasCategoryData
+            ? activeContentColor.withValues(alpha: 0.8)
             : colorScheme.onSurfaceVariant;
 
         return Card(
@@ -115,7 +126,6 @@ class CategoryTitleExpansionList extends StatelessWidget {
             collapsedIconColor: headerContentColor,
             backgroundColor: Colors.transparent,
             collapsedBackgroundColor: Colors.transparent,
-
             title: Text(
               category.name,
               style: TextStyle(
@@ -123,7 +133,6 @@ class CategoryTitleExpansionList extends StatelessWidget {
                 color: headerContentColor,
               ),
             ),
-
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4.0),
               child: Column(
@@ -144,7 +153,7 @@ class CategoryTitleExpansionList extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: hasCategoryIncome
+                          color: hasCategoryData
                               ? Colors.white.withValues(alpha: 0.3)
                               : colorScheme.secondaryContainer,
                           borderRadius: BorderRadius.circular(4),
@@ -154,7 +163,7 @@ class CategoryTitleExpansionList extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: hasCategoryIncome
+                            color: hasCategoryData
                                 ? headerContentColor
                                 : colorScheme.onSecondaryContainer,
                           ),
@@ -173,11 +182,8 @@ class CategoryTitleExpansionList extends StatelessWidget {
                 ],
               ),
             ),
-
-            // 🔥 ၅။ Children Logic (List of Titles)
             children: categoryTitles.isEmpty
                 ? [
-              // Empty State
               Container(
                 color: colorScheme.surfaceContainerLow,
                 child: ListTile(
@@ -193,18 +199,19 @@ class CategoryTitleExpansionList extends StatelessWidget {
               ),
             ]
                 : categoryTitles.map((title) {
-              final titleIncomes = incomes.where((i) => i.titleId == title.id).toList();
-              final titleTotalAmount = titleIncomes.fold(0.0, (sum, item) => sum + item.amount);
+              // Filter items by title using generic extractor
+              final titleItems = items.where((i) => getTitleId(i) == title.id).toList();
+              final titleTotalAmount = titleItems.fold(0.0, (sum, item) => sum + getAmount(item));
 
-              // 🔥 Title Color Logic (Child)
-              final bool hasTitleIncome = titleTotalAmount > 0;
+              final bool hasTitleData = titleTotalAmount > 0;
 
-              final Color titleBackgroundColor = hasTitleIncome
-                  ? colorScheme.primaryContainer.withValues(alpha: 0.1)
+              // Child (Title) Styling Logic
+              final Color titleBackgroundColor = hasTitleData
+                  ? activeContainerColor.withValues(alpha: 0.1)
                   : colorScheme.surfaceContainerLow;
 
-              final Color titleContentColor = hasTitleIncome
-                  ? colorScheme.onPrimaryContainer
+              final Color titleContentColor = hasTitleData
+                  ? primaryTextColor
                   : colorScheme.onSurface;
 
               return Container(
@@ -225,8 +232,10 @@ class CategoryTitleExpansionList extends StatelessWidget {
                                 : Icons.bookmark_border,
                             size: 20,
                             color: title.bookmark
-                                ? (hasTitleIncome ? colorScheme.primary : colorScheme.primary)
-                                : (hasTitleIncome ? titleContentColor.withValues(alpha: 0.5) : colorScheme.outline),
+                                ? primaryTextColor // Green or Red based on type
+                                : (hasTitleData
+                                ? titleContentColor.withValues(alpha: 0.5)
+                                : colorScheme.outline),
                           ),
                         ),
                       ),

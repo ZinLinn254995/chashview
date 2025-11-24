@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../domain/entities/category_entity.dart';
-import '../../../domain/entities/income_entity.dart';
+import '../../../domain/entities/expense_entity.dart';
 import '../../../domain/entities/title_entity.dart';
 import '../viewmodels/category_viewmodel.dart';
-import '../viewmodels/income_viewmodel.dart';
+import '../viewmodels/expense_viewmodel.dart';
 import '../viewmodels/title_viewmodel.dart';
 
-class AddIncomeFullScreen extends StatefulWidget {
-  const AddIncomeFullScreen({super.key});
+class AddExpenseFullScreen extends StatefulWidget {
+  const AddExpenseFullScreen({super.key});
 
   @override
-  State<AddIncomeFullScreen> createState() => _AddIncomeFullScreenState();
+  State<AddExpenseFullScreen> createState() => _AddExpenseFullScreenState();
 }
 
-class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
+class _AddExpenseFullScreenState extends State<AddExpenseFullScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // IDs for Logic
@@ -35,8 +35,6 @@ class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      //context.read<CategoryViewModel>().loadCategories("income");
-      //context.read<TitleViewModel>().loadTitles("income");
     });
   }
 
@@ -78,18 +76,18 @@ class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
     final theme = Theme.of(context);
 
     // Filter Titles based on Category
-    final filteredTitles = titleVM.incomeTitles
+    final filteredTitles = titleVM.expenseTitles
         .where((t) => t.categoryId == selectedCategoryId)
         .toList();
 
     // Logic to check if fields should be enabled
-    final bool isCategoryAvailable = catVM.incomeCategories.isNotEmpty;
+    final bool isCategoryAvailable = catVM.expenseCategories.isNotEmpty;
     final bool isTitleAvailable = filteredTitles.isNotEmpty;
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        title: const Text("Add Income"),
+        title: const Text("Add Expense"), // Title Changed
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.close),
@@ -97,7 +95,7 @@ class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: saveIncome,
+            onPressed: saveExpense, // Function Changed
             child: Text(
               "Save",
               style: TextStyle(
@@ -130,7 +128,7 @@ class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
                   selectedCategoryId == null ? "Please select a category" : null,
                   onTap: () {
                     if (isCategoryAvailable) {
-                      _showCategoryDialog(catVM.incomeCategories);
+                      _showCategoryDialog(catVM.expenseCategories);
                     }
                   },
                 ),
@@ -245,7 +243,7 @@ class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
     );
   }
 
-  // 🔥 Custom Dialog for Category (FIXED: Standard RadioListTile)
+  // 🔥 Custom Dialog for Category (RadioListTile Implementation)
   Future<void> _showCategoryDialog(List<CategoryEntity> categories) async {
     String? tempSelectedId = selectedCategoryId;
 
@@ -262,7 +260,6 @@ class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
                 constraints: BoxConstraints(
                     maxHeight: MediaQuery.of(context).size.height * 0.5),
                 child: SingleChildScrollView(
-                  // RadioGroup ကို ဖြုတ်ပြီး ရိုးရိုး Column သုံးမယ်
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: categories.map((item) {
@@ -293,7 +290,7 @@ class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
                         _categoryDisplayCtrl.text = categories
                             .firstWhere((c) => c.id == tempSelectedId)
                             .name;
-                        // Category ပြောင်းရင် Title ကို Reset ချ
+                        // Reset Title when Category changes
                         selectedExistingTitleId = null;
                         _titleDisplayCtrl.clear();
                       });
@@ -310,7 +307,7 @@ class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
     );
   }
 
-  // 🔥 Custom Dialog for Title (FIXED: Standard RadioListTile)
+  // 🔥 Custom Dialog for Title (RadioListTile Implementation)
   Future<void> _showTitleDialog(List<TitleEntity> titles) async {
     String? tempSelectedId = selectedExistingTitleId;
 
@@ -333,9 +330,7 @@ class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
                       return RadioListTile<String>(
                         title: Text(item.name),
                         value: item.id,
-                        // ✅ groupValue ထည့်မယ်
                         groupValue: tempSelectedId,
-                        // ✅ onChanged ထည့်မှ Enable ဖြစ်မယ်
                         onChanged: (value) {
                           setStateDialog(() {
                             tempSelectedId = value;
@@ -385,8 +380,8 @@ class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
     }
   }
 
-  // 🔥 Saving Logic
-  void saveIncome() {
+  // 🔥 Saving Logic for Expense
+  void saveExpense() {
     if (!_formKey.currentState!.validate()) return;
 
     showDialog(
@@ -395,17 +390,18 @@ class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
       builder: (dialogContext) {
         return _SaveStatusDialog(
           onProcess: () async {
-            final incomeVM = context.read<IncomeViewModel>();
+            // Use ExpenseViewModel
+            final expenseVM = context.read<ExpenseViewModel>();
             final titleVM = context.read<TitleViewModel>();
             final amount = double.parse(_amountCtrl.text.trim());
             String finalTitleId = "";
 
             if (useNewTitle) {
               final newName = _newTitleInputCtrl.text.trim();
-              await titleVM.addTitle("income", newName, selectedCategoryId!);
-              //await titleVM.loadTitles("income");
+              // 🔥 Create Title for 'expense'
+              await titleVM.addTitle("expense", newName, selectedCategoryId!);
 
-              final created = titleVM.incomeTitles.firstWhere(
+              final created = titleVM.expenseTitles.firstWhere(
                     (t) =>
                 t.name.toLowerCase() == newName.toLowerCase() &&
                     t.categoryId == selectedCategoryId,
@@ -417,7 +413,8 @@ class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
               finalTitleId = selectedExistingTitleId!;
             }
 
-            final newIncome = IncomeEntity(
+            // 🔥 Create Expense Entity
+            final newExpense = ExpenseEntity(
               id: "",
               titleId: finalTitleId,
               amount: amount,
@@ -425,7 +422,8 @@ class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
               createdAt: DateTime.now(),
             );
 
-            await incomeVM.addIncome(newIncome);
+            // Call Add Expense
+            await expenseVM.addExpense(newExpense);
           },
           onSuccess: () {
             Navigator.pop(context);
@@ -436,7 +434,7 @@ class _AddIncomeFullScreenState extends State<AddIncomeFullScreen> {
   }
 }
 
-// 👇 Save Status Dialog
+// 👇 Save Status Dialog (Same as Income)
 class _SaveStatusDialog extends StatefulWidget {
   final Future<void> Function() onProcess;
   final VoidCallback onSuccess;

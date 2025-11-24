@@ -9,25 +9,47 @@ class ExpenseRemoteDataSource {
 
   ExpenseRemoteDataSource(this.firebaseService);
 
+  /// 🔥 FIX: Push/Auto ID ကို သုံးပြီး List ထဲကို ထည့်ပါ
   Future<void> createExpense(String userId, ExpenseModel model) async {
-    await firebaseService
-        .ref('${FirebasePaths.expense(userId)}/${model.id}')
-        .set(model.toJson());
+    final ref = firebaseService.ref(FirebasePaths.expense(userId)).push();
+    await ref.set(model.toJson());
   }
 
+  // 🔥 ဒီ Function ကို အဓိက ပြင်ထားပါတယ်
   Future<List<ExpenseModel>> getExpenses(String userId) async {
     final snapshot = await firebaseService.getData(FirebasePaths.expense(userId));
 
     if (!snapshot.exists || snapshot.value == null) return [];
 
-    final map = snapshot.value as Map<dynamic, dynamic>;
+    final dynamic data = snapshot.value;
 
-    return map.entries.map((e) {
-      return ExpenseModel.fromJson(
-        Map<String, dynamic>.from(e.value),
-        e.key,
-      );
-    }).toList();
+    // ၁။ Data က Map ဟုတ်မဟုတ် အရင်စစ်ပါတယ်
+    if (data is Map) {
+      return data.entries.map((e) {
+        final dynamic val = e.value;
+
+        // ၂။ ပြဿနာတက်စေတဲ့နေရာ (String is not subtype of Map Error ကို ကာကွယ်ခြင်း)
+        // Data တစ်ခုချင်းစီက Map ဟုတ်မှသာ Model ပြောင်းမယ်၊ String/Int ဖြစ်နေရင် Null ပြန်မယ်
+        if (val is Map) {
+          try {
+            return ExpenseModel.fromJson(
+              Map<String, dynamic>.from(val),
+              e.key.toString(),
+            );
+          } catch (e) {
+            // Parsing Error ရှိရင်လည်း ကျော်သွားမယ်
+            return null;
+          }
+        }
+        return null; // Bad data (String) ဆိုရင် null ပြန်မယ်
+      })
+      // ၃။ Null ဖြစ်နေတဲ့ (Bad Data) တွေကို စစ်ထုတ်လိုက်မယ်
+          .where((element) => element != null)
+          .cast<ExpenseModel>()
+          .toList();
+    }
+
+    return [];
   }
 
   Future<void> updateExpense(String userId, ExpenseModel model) async {
@@ -42,7 +64,7 @@ class ExpenseRemoteDataSource {
         .remove();
   }
 
-  /// 🔥 REALTIME LISTEN
+  /// 🔥 REALTIME LISTEN (ဒီနေရာကို အဓိက ပြင်ပါ)
   Stream<List<ExpenseModel>> listenExpenses(String userId) {
     final path = FirebasePaths.expense(userId);
 
@@ -52,16 +74,22 @@ class ExpenseRemoteDataSource {
       if (!snap.exists) return <ExpenseModel>[];
 
       final children = snap.children;
-
       final list = <ExpenseModel>[];
 
       for (final child in children) {
         if (child.value == null) continue;
 
-        try {
-          final json = Map<String, dynamic>.from(child.value as Map);
-          list.add(ExpenseModel.fromJson(json, child.key!));
-        } catch (_) {}
+        // 🔥 FIX: Data Type ကို သေချာစစ်ဆေးပါ
+        // String/Int တွေပါလာရင် Error မတက်စေဘဲ Map ဖြစ်မှသာ ယူပါမယ်
+        if (child.value is Map) {
+          try {
+            final json = Map<String, dynamic>.from(child.value as Map);
+            list.add(ExpenseModel.fromJson(json, child.key!));
+          } catch (e) {
+            // Parsing error ရှိရင် ကျော်သွားမယ် (Log ထုတ်ကြည့်နိုင်သည်)
+            print("Expense Parsing Error: $e");
+          }
+        }
       }
 
       return list;

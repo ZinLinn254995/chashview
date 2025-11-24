@@ -17,50 +17,43 @@ users
     │       └── catId_001: { name: "Buy iPhone 16" }
     │
     ├── incomeTitles
-    │   ├── titleId_001: { name: "Salary" }
-    │   └── titleId_002: { name: "Delivery Fee" }
+    │   ├── titleId_001: { name: "Salary", categoryId: "catId_002" }
+    │   └── titleId_002: { name: "Delivery Fee", categoryId: "catId_002" }
     │
     ├── expenseTitles
-    │   ├── titleId_001: { name: "Food" }
-    │   └── titleId_002: { name: "Transport" }
+    │   ├── titleId_001: { name: "Food", categoryId: "catId_002" }
+    │   └── titleId_002: { name: "Transport", categoryId: "catId_002" }
     │
     ├── income
     │   ├── incomeId_001
     │   │   ├── titleId: "titleId_002"
     │   │   ├── amount: 200
-    │   │   ├── categoryId: "catId_002"
     │   │   ├── date: "2025-11-12"
     │   │   ├── createdAt: "2025-11-12T10:20:00Z"
-
     │   ├── incomeId_002
     │   │   ├── titleId: "titleId_002"
     │   │   ├── amount: 50
-    │   │   ├── categoryId: "catId_002"
     │   │   ├── date: "2025-11-12"
     │   │   ├── createdAt: "2025-11-12T15:42:00Z"
-    │   │   └── isBookmarked: true
     │   └── incomeId_003
     │       ├── titleId: "titleId_001"
     │       ├── amount: 1000
-    │       ├── categoryId: "catId_001"
     │       ├── date: "2025-11-01"
     │       ├── createdAt: "2025-11-01T08:00:00Z"
-    │       └── isBookmarked: false
+    │
     │
     ├── expense
     │   └── expenseId_001
     │       ├── titleId: "titleId_001"
     │       ├── amount: 120
-    │       ├── categoryId: "catId_001"
     │       ├── date: "2025-11-10"
     │       ├── createdAt: "2025-11-10T13:30:00Z"
-    │       └── isBookmarked: false
+    │
     │
     ├── budget
     │   └── budgetId_001
     │       ├── title: "November Budget"
     │       ├── amount: 2000
-    │       ├── categoryId: "catId_001"
     │       ├── date: "2025-11-01"
     │       └── createdAt: "2025-11-01T00:00:00Z"
     │
@@ -69,5 +62,4 @@ users
             ├── title: "Buy iPhone 16"
             ├── goalAmount: 1200
             ├── savedAmount: 400
-            ├── categoryId: "catId_001"
             └── createdAt: "2025-11-05T09:00:00Z"

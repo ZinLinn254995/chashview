@@ -23,11 +23,6 @@ class ChartLegend extends StatelessWidget {
       fontSize: 11,
     );
 
-    // Colors must match PeriodComparisonPieChart logic
-    // Income Screen Logic:
-    // Not All Time -> Primary (Current) vs Secondary (Previous)
-    // All Time -> Primary (Income) vs ErrorContainer/Secondary (Expense)
-
     final Color mainColor = colorScheme.primary;
     final Color secondaryColor =
     isAllTime ? colorScheme.errorContainer : colorScheme.secondary;

@@ -11,6 +11,7 @@ import '../../viewmodels/income_viewmodel.dart';
 import '../../viewmodels/summary_viewmodel.dart';
 import '../../viewmodels/title_viewmodel.dart';
 import '../../widgets/add_income_dialog.dart';
+// Note: Ensure the file name matches where you saved the generic widget
 import '../../widgets/category_title_expansion_list.dart';
 import '../../widgets/chart_legend.dart';
 import '../../widgets/date_range_picker.dart';
@@ -28,15 +29,8 @@ class IncomeScreen extends StatefulWidget {
 
 class _IncomeScreenState extends State<IncomeScreen>
     with AutomaticKeepAliveClientMixin {
-  /*TimeRangeTab selectedTab = TimeRangeTab.daily;
-  DateTime? selectedDate;
-  DateTime? selectedMonth;
-  DateTime? selectedYear;
-  DateTimeRange? selectedRange;*/
-
   TimeRangeTab selectedTab = TimeRangeTab.daily;
-  DateTime selectedDate =
-  DateTime.now(); // Non-nullable for easier logic, init in declaration
+  DateTime selectedDate = DateTime.now();
   DateTime selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
   DateTime selectedYear = DateTime(DateTime.now().year);
   DateTimeRange? selectedRange;
@@ -70,16 +64,7 @@ class _IncomeScreenState extends State<IncomeScreen>
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final catVM = Provider.of<CategoryViewModel>(context, listen: false);
-      final titleVM = Provider.of<TitleViewModel>(context, listen: false);
       final incomeVM = Provider.of<IncomeViewModel>(context, listen: false);
-
-      if (catVM.categories.isEmpty) {
-        catVM.loadCategories("income");
-      }
-
-      titleVM.subscribeToTitles("income");
-
       if (incomeVM.incomes.isEmpty) {
         incomeVM.loadIncomes();
       }
@@ -88,7 +73,6 @@ class _IncomeScreenState extends State<IncomeScreen>
 
   void _onTabSelected(TimeRangeTab tab) {
     setState(() => selectedTab = tab);
-
     _triggerSummaryUpdate();
   }
 
@@ -127,7 +111,6 @@ class _IncomeScreenState extends State<IncomeScreen>
           59,
         );
         vm.subscribeWithRange(SummaryTimeRange.monthly, start, end);
-
         break;
 
       case TimeRangeTab.yearly:
@@ -164,7 +147,6 @@ class _IncomeScreenState extends State<IncomeScreen>
 
       case TimeRangeTab.monthly:
         final prevMonth = DateTime(selectedMonth.year, selectedMonth.month - 1);
-
         final s = DateTime(prevMonth.year, prevMonth.month, 1);
         final e = DateTime(prevMonth.year, prevMonth.month + 1, 0, 23, 59, 59);
         return vm.fetchPeriodData(SummaryTimeRange.monthly, s, e);
@@ -240,14 +222,9 @@ class _IncomeScreenState extends State<IncomeScreen>
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // ---------------------------------------------------------
             // Section 1: Income Header + Charts Area
-            // ဒီနှစ်ခုကို Group ဖွဲ့လိုက်ခြင်းဖြင့် Chart တွေကုန်သွားရင်
-            // Income Header ပါ အပေါ်ကို လိုက်ပါသွားပါလိမ့်မယ် (Push Effect)
-            // ---------------------------------------------------------
             SliverMainAxisGroup(
               slivers: [
-                // 1.1 Income Sticky Header
                 SliverPersistentHeader(
                   pinned: true,
                   delegate: _StickyHeaderDelegate(
@@ -278,8 +255,6 @@ class _IncomeScreenState extends State<IncomeScreen>
                     ),
                   ),
                 ),
-
-                // 1.2 Chart Content (SliverToBoxAdapter)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.only(
@@ -345,7 +320,6 @@ class _IncomeScreenState extends State<IncomeScreen>
                                           .withValues(alpha: 0.5),
                                     ),
                                     AppGap.md,
-                                    // Stats Display Logic
                                     Consumer<SummaryViewModel>(
                                       builder: (_, vm, __) {
                                         final summary = vm.getSummary(
@@ -510,13 +484,9 @@ class _IncomeScreenState extends State<IncomeScreen>
               ],
             ),
 
-            // ---------------------------------------------------------
             // Section 2: Categories Header + List Area
-            // ဒီ Group တက်လာတာနဲ့ အပေါ်က Group (Income) ကို တွန်းထုတ်သွားပါမယ်
-            // ---------------------------------------------------------
             SliverMainAxisGroup(
               slivers: [
-                // 2.1 Categories Sticky Header
                 SliverPersistentHeader(
                   pinned: true,
                   delegate: _StickyHeaderDelegate(
@@ -588,10 +558,20 @@ class _IncomeScreenState extends State<IncomeScreen>
                                   incomeVM.incomes,
                                 );
 
-                                return CategoryTitleExpansionList(
-                                  categories: categoryVM.categories,
-                                  titles: titleVM.titles,
-                                  incomes: filteredIncomes,
+                                // 🔥 Fix 2: Correct usage of Generic Widget with incomeCategories
+                                return CategoryTitleExpansionList<IncomeEntity>(
+                                  // ⚠️ Change: categoryVM.categories -> categoryVM.incomeCategories
+                                  categories: categoryVM.incomeCategories,
+                                  titles: titleVM.incomeTitles,
+                                  items: filteredIncomes,
+
+                                  type: TransactionType.income,
+
+                                  // Data Extractors
+                                  getAmount: (income) => income.amount,
+                                  getTitleId: (income) => income.titleId,
+
+                                  // Actions
                                   onTitleTap: (categoryId, title) {
                                     Navigator.push(
                                       context,
@@ -621,7 +601,6 @@ class _IncomeScreenState extends State<IncomeScreen>
                   ),
                 ),
 
-                // Bottom Padding
                 const SliverPadding(
                   padding: EdgeInsets.only(bottom: AppPadding.xl),
                 ),
@@ -636,22 +615,16 @@ class _IncomeScreenState extends State<IncomeScreen>
   void showAddIncomeFullScreen(BuildContext context) {
     showGeneralDialog(
       context: context,
-
       barrierDismissible: true,
-
       barrierLabel: "Add Income",
-
       transitionDuration: const Duration(milliseconds: 250),
-
       pageBuilder: (_, __, ___) => const AddIncomeFullScreen(),
-
       transitionBuilder: (_, anim, __, child) {
         return SlideTransition(
           position: Tween(
             begin: const Offset(0, 1),
             end: Offset.zero,
           ).animate(anim),
-
           child: child,
         );
       },
@@ -662,19 +635,15 @@ class _IncomeScreenState extends State<IncomeScreen>
     switch (tab) {
       case TimeRangeTab.daily:
         return SummaryTimeRange.daily;
-
       case TimeRangeTab.monthly:
         return SummaryTimeRange.monthly;
-
       case TimeRangeTab.yearly:
         return SummaryTimeRange.yearly;
-
       case TimeRangeTab.allTime:
         return SummaryTimeRange.allTime;
     }
   }
 
-  // Helper method to get string name for Legend
   String _mapPeriodName() {
     switch (selectedTab) {
       case TimeRangeTab.daily:
@@ -689,7 +658,6 @@ class _IncomeScreenState extends State<IncomeScreen>
   }
 }
 
-// _StickyHeaderDelegate Class
 class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double height;
   final Widget child;

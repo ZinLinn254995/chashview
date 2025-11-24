@@ -74,6 +74,7 @@ class ExpenseViewModel extends ChangeNotifier {
         },
         onError: (err, stack) {
           // On error, fall back to one-time fetch to avoid empty UI
+          debugPrint("Expense Stream Error: $err");
           _isListening = false;
           isLoading = false;
           notifyListeners();
