@@ -56,6 +56,7 @@ dependencies:
   gradient_circular_progress_indicator: ^0.0.4
   fl_chart: ^1.1.1
   syncfusion_flutter_gauges: ^31.2.5
+  syncfusion_flutter_charts: ^31.2.12
 
   # Icons
   cupertino_icons: ^1.0.8

@@ -20,6 +20,7 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: colorScheme.surface,
       leading: null,
       automaticallyImplyLeading: false,
+      scrolledUnderElevation: 0,
       title: Text(
         title,
         style: textTheme.headlineSmall?.copyWith(color: colorScheme.onSurface, fontWeight: FontWeight.bold),

@@ -5,11 +5,13 @@ enum TimeRangeTab { daily, monthly, yearly, allTime }
 class TimeRangeTabWidget extends StatelessWidget {
   final TimeRangeTab selectedTab;
   final Function(TimeRangeTab) onTabSelected;
+  final bool showAllTimeTab; // ✅ NEW: All Time Tab ကို ပြမလား၊ မပြဘူးလား ထိန်းချုပ်ရန်
 
   const TimeRangeTabWidget({
     super.key,
     required this.selectedTab,
     required this.onTabSelected,
+    this.showAllTimeTab = true, // Default က true ဖြစ်လို့၊ မထည့်ရင် ၄ ခုလုံး ပေါ်မယ်
   });
 
   String _label(TimeRangeTab tab) {
@@ -28,7 +30,14 @@ class TimeRangeTabWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tabs = TimeRangeTab.values;
+
+    // 1. showAllTimeTab value ပေါ်မူတည်ပြီး Tabs စစ်ထုတ်မယ်
+    final tabs = TimeRangeTab.values.where((t) {
+      if (!showAllTimeTab && t == TimeRangeTab.allTime) {
+        return false; // showAllTimeTab: false ဖြစ်ရင် All Time ကို ဖယ်
+      }
+      return true; // ကျန်တာတွေ (သို့မဟုတ် showAllTimeTab: true ဖြစ်ရင်) အားလုံး ထည့်
+    }).toList();
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
