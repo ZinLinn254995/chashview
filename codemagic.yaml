@@ -1,0 +1,29 @@
+workflows:
+  simple-ios:
+    name: iOS Build for Personal Use
+    environment:
+      vars:
+        APPLE_ID: "zla264995@gmail.com"          # သင့် email ထည့်ပါ
+        APPLE_ID_PASSWORD: "kqtj-isgs-qvov-scio"  # app-specific password ထည့်ပါ
+      ios_signing:
+        distribution_type: development
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+    scripts:
+      - name: Flutter Setup
+        script: |
+          flutter clean
+          flutter pub get
+      - name: Build IPA
+        script: |
+          flutter build ipa --debug
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      email:
+        recipients:
+          - your_email@gmail.com
