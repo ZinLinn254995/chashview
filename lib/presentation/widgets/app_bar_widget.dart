@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/routing/route_names.dart';
-import '../../core/constants/app_sizes.dart';
 
 class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -21,6 +20,7 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
       leading: null,
       automaticallyImplyLeading: false,
       scrolledUnderElevation: 0,
+      toolbarHeight: kToolbarHeight,
       title: Text(
         title,
         style: textTheme.headlineSmall?.copyWith(color: colorScheme.onSurface, fontWeight: FontWeight.bold),

@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/category_viewmodel.dart';
-import '../../widgets/add_category_dialog.dart';
+import '../../widgets/category_dialog.dart';
 
 
 class CategoryScreen extends StatefulWidget {
@@ -53,7 +53,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
         onPressed: () {
           showDialog(
             context: context,
-            builder: (_) => AddCategoryDialog(type: type),
+            builder: (_) => CategoryDialog(type: type),
           );
         },
         child: const Icon(Icons.add),

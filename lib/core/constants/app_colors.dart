@@ -29,4 +29,23 @@ class AppColors {
   static const Color white = Colors.white;
   static const Color red = Colors.red;
   static const Color green = Colors.green;
+
+  // FINANCIAL SPECIFIC COLORS
+  static const Color income = Color(0xFF10B981);        // ဝင်ငွေ
+  static const Color expense = Color(0xFFEF4444);       // ထွက်ငွေ
+  static const Color savings = Color(0xFFF59E0B);       // စုဆောင်းငွေ
+  static const Color investment = Color(0xFF8B5CF6);    // ရင်းနှီးမြှုပ်နှံမှု
+  static const Color debt = Color(0xFFEC4899);          // ကြွေးမြီ
+  static const Color splash = Color(0xFF0063B2);
+  static const Color logo = Color(0xFF96DEFF);
+
+// CHART COLORS (6 colors for pie charts and bar charts)
+  static const List<Color> chartColors = [
+    Color(0xFF5D9CEC),  // Blue
+    Color(0xFF4CD964),  // Green
+    Color(0xFFFF9500),  // Orange
+    Color(0xFFFF3B30),  // Red
+    Color(0xFFBF5AF2),  // Purple
+    Color(0xFFFFD60A),  // Yellow
+  ];
 }

@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart'; // ✅ Provider import
 import 'package:syncfusion_flutter_charts/charts.dart';
-import '../viewmodels/summary_viewmodel.dart';
-import '../viewmodels/currency_viewmodel.dart'; // ✅ CurrencyViewModel import
-import 'time_range_tab.dart';
+
+import '../../viewmodels/currency_viewmodel.dart';
+import '../../viewmodels/summary_viewmodel.dart';
+import '../time_range_tab.dart';
+
 
 class IncomeExpenseLineChart extends StatefulWidget {
   final List<DailySummaryData> data;
@@ -91,6 +93,7 @@ class _IncomeExpenseLineChartState extends State<IncomeExpenseLineChart> {
               fontWeight: FontWeight.w500,
             ),
             plotOffsetEnd: 20,
+            plotOffsetStart: 20,
           ),
           primaryYAxis: NumericAxis(
             axisLine: const AxisLine(width: 0),
@@ -135,7 +138,7 @@ class _IncomeExpenseLineChartState extends State<IncomeExpenseLineChart> {
               dataSource: validData,
               xValueMapper: (DailySummaryData sales, _) => sales.date,
               yValueMapper: (DailySummaryData sales, _) => sales.income,
-              color: colorScheme.primary,
+              color: colorScheme.secondary,
               width: 2,
               animationDuration: 800, // Sync with axis animation
               markerSettings: const MarkerSettings(
@@ -154,7 +157,7 @@ class _IncomeExpenseLineChartState extends State<IncomeExpenseLineChart> {
               dataSource: validData,
               xValueMapper: (DailySummaryData sales, _) => sales.date,
               yValueMapper: (DailySummaryData sales, _) => sales.expense,
-              color: colorScheme.error,
+              color: colorScheme.tertiary,
               width: 2,
               animationDuration: 800, // Sync with axis animation
               markerSettings: const MarkerSettings(
@@ -228,8 +231,8 @@ class _IncomeExpenseLineChartState extends State<IncomeExpenseLineChart> {
             ),
           ),
           const SizedBox(height: 4),
-          _buildTooltipRow('Income', dailyData.income, colorScheme.primary, currencySymbol),
-          _buildTooltipRow('Expense', dailyData.expense, colorScheme.error, currencySymbol),
+          _buildTooltipRow('Income', dailyData.income, colorScheme.secondary, currencySymbol),
+          _buildTooltipRow('Expense', dailyData.expense, colorScheme.tertiary, currencySymbol),
         ],
       ),
     );

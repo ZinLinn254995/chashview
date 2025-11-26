@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import '../../../domain/entities/title_entity.dart';
 import '../../domain/usecases/title/create_title_usecase.dart';
@@ -103,6 +104,32 @@ class TitleViewModel extends ChangeNotifier {
     );
   }
 
+  // ✅ ADD THIS: General update method for renaming
+  Future<void> updateTitle({
+    required String type,
+    required TitleEntity title,
+  }) async {
+    final uid = authViewModel.user?.uid;
+    if (uid == null) return;
+
+    isLoading = true;
+    notifyListeners();
+
+    try {
+      await updateTitleUseCase.call(
+        userId: uid,
+        type: type,
+        title: title,
+      );
+    } catch (e) {
+      debugPrint("Update Title Error: $e");
+      rethrow;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // ... (Update, Delete, ToggleBookmark functions remain mostly same but use type to navigate logic if needed,
   // though Stream handles the UI update automatically)
 
@@ -116,6 +143,52 @@ class TitleViewModel extends ChangeNotifier {
     if (index != -1) {
       final updatedTitle = targetList[index].copyWith(bookmark: isBookmark);
       await updateTitleUseCase.call(userId: uid, type: type, title: updatedTitle);
+    }
+  }
+
+  // TitleViewModel ထဲမှာ ဒီ method ကို ထပ်ထည့်ပါ
+  Future<void> deleteTitleWithCascade({
+    required String type,
+    required String titleId,
+    required List<String> relatedItemIds,
+  }) async {
+    final uid = authViewModel.user?.uid;
+    if (uid == null) return;
+
+    isLoading = true;
+    notifyListeners();
+
+    try {
+      final dbRef = FirebaseDatabase.instance.ref();
+      Map<String, dynamic> updates = {};
+
+      // ၁။ Title ကို ဖျက်ရန်
+      final String titlePath = 'users/$uid/${type}Titles/$titleId';
+      updates[titlePath] = null;
+
+      // ၂။ Related Items (Income/Expense) များကို ဖျက်ရန်
+      final String itemRoot = type; // 'income' or 'expense'
+
+      for (var itemId in relatedItemIds) {
+        updates['users/$uid/$itemRoot/$itemId'] = null;
+      }
+
+      // ၃။ Batch update လုပ်ခြင်း
+      debugPrint("🗑️ Batch deleting title: $titleId");
+      debugPrint("🗑️ Related items to delete: ${relatedItemIds.length}");
+      debugPrint("🗑️ Batch updates: $updates");
+
+      await dbRef.update(updates);
+
+      debugPrint("✅ Title cascade delete completed successfully");
+
+    } catch (e, stackTrace) {
+      debugPrint("❌ Title Cascade Delete Error: $e");
+      debugPrint("Stack Trace: $stackTrace");
+      rethrow;
+    } finally {
+      isLoading = false;
+      notifyListeners();
     }
   }
 

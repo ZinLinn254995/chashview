@@ -26,11 +26,11 @@ class PeriodComparisonPieChart extends StatelessWidget {
 
     // Color Logic
     final Color mainColor =
-    type == ChartType.income ? colorScheme.primary : colorScheme.primary;
+    type == ChartType.income ? colorScheme.secondary : colorScheme.tertiary;
 
     final Color secondaryColor = type == ChartType.income
-        ? colorScheme.secondary
-        : colorScheme.secondary;
+        ? colorScheme.primary
+        : colorScheme.primary;
 
     // Calculate Sections
     List<PieChartSectionData> sections;
@@ -111,7 +111,8 @@ class PeriodComparisonPieChart extends StatelessWidget {
     String text = "$sign${percentage.toStringAsFixed(0)}%";
 
     // Color: Green for +, Red for -
-    Color textColor = isPositive ? AppColors.green : AppColors.red;
+    Color textColor = isPositive ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primary;
+
 
     // If percentage is 0 or 100 (new record), handle specifically if needed
     if (percentage == 0) {
@@ -125,7 +126,7 @@ class PeriodComparisonPieChart extends StatelessWidget {
       style: Theme.of(context).textTheme.labelSmall?.copyWith(
         color: textColor,
         fontWeight: FontWeight.bold,
-        fontSize: 10,
+        fontSize: 14,
       ),
     );
   }

@@ -2,18 +2,21 @@ import 'package:chashview/presentation/widgets/currency_text.dart';
 import 'package:chashview/presentation/widgets/label_text.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/routing/route_names.dart';
 import '../../../domain/entities/expense_entity.dart';
+import '../../../domain/entities/title_entity.dart';
 import '../../viewmodels/category_viewmodel.dart';
 import '../../viewmodels/expense_viewmodel.dart';
 import '../../viewmodels/summary_viewmodel.dart';
 import '../../viewmodels/title_viewmodel.dart';
 import '../../widgets/add_expense_dialog.dart';
+import '../../widgets/category_dialog.dart';
 import '../../widgets/category_title_expansion_list.dart';
 import '../../widgets/chart_legend.dart';
+import '../../widgets/charts/period_comparison_pie_chart.dart';
 import '../../widgets/date_range_picker.dart';
-import '../../widgets/period_comparison_pie_chart.dart';
 import '../../widgets/time_range_tab.dart';
 import '../category/category_screen.dart';
 import 'expense_by_title_screen.dart';
@@ -27,13 +30,19 @@ class ExpenseScreen extends StatefulWidget {
 
 class _ExpenseScreenState extends State<ExpenseScreen>
     with AutomaticKeepAliveClientMixin {
+  // Constants
+  static const _kScreenTitle = "Expense";
+  static const _kCategoriesTitle = "EXPENSES BY CATEGORY";
+  static const _kAddExpenseText = "ADD EXPENSE";
 
-  TimeRangeTab selectedTab = TimeRangeTab.daily;
-  DateTime selectedDate = DateTime.now();
-  DateTime selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
-  DateTime selectedYear = DateTime(DateTime.now().year);
-  DateTimeRange? selectedRange;
+  // State variables
+  late TimeRangeTab _selectedTab;
+  late DateTime _selectedDate;
+  late DateTime _selectedMonth;
+  late DateTime _selectedYear;
+  DateTimeRange? _selectedRange;
 
+  // Async data
   Future<SummaryData>? _previousDataFuture;
 
   @override
@@ -42,40 +51,109 @@ class _ExpenseScreenState extends State<ExpenseScreen>
   @override
   void initState() {
     super.initState();
+    _initializeState();
+    _scheduleInitialLoad();
+  }
 
-    selectedDate = DateTime.now();
-    selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
-    selectedYear = DateTime(DateTime.now().year);
-    selectedRange = null;
+  void _initializeState() {
+    final now = DateTime.now();
+    _selectedTab = TimeRangeTab.daily;
+    _selectedDate = now;
+    _selectedMonth = DateTime(now.year, now.month);
+    _selectedYear = DateTime(now.year);
+    _selectedRange = null;
+  }
 
+  void _scheduleInitialLoad() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final summaryVM = Provider.of<SummaryViewModel>(context, listen: false);
-
-      final currentRange = _mapTabToRange(selectedTab);
-
-      if (summaryVM.getSummary(currentRange) == null) {
-        _triggerSummaryUpdate();
-      } else {
-        setState(() {
-          _previousDataFuture = _loadPreviousData(summaryVM);
-        });
-      }
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final expenseVM = Provider.of<ExpenseViewModel>(context, listen: false);
-
-      if (expenseVM.expenses.isEmpty) {
-        expenseVM.loadExpenses();
-      }
+      _loadInitialData();
     });
   }
 
+  void _loadInitialData() {
+    final summaryVM = Provider.of<SummaryViewModel>(context, listen: false);
+    final expenseVM = Provider.of<ExpenseViewModel>(context, listen: false);
+
+    // Load summary data if not available
+    final currentRange = _mapTabToRange(_selectedTab);
+    if (summaryVM.getSummary(currentRange) == null) {
+      _triggerSummaryUpdate();
+    } else {
+      setState(() {
+        _previousDataFuture = _loadPreviousData(summaryVM);
+      });
+    }
+
+    // Load expenses if empty
+    if (expenseVM.expenses.isEmpty) {
+      expenseVM.loadExpenses();
+    }
+  }
+
+  // Event Handlers
   void _onTabSelected(TimeRangeTab tab) {
-    setState(() => selectedTab = tab);
+    setState(() => _selectedTab = tab);
     _triggerSummaryUpdate();
   }
 
+  void _onDateChanged(DateTime newDate) {
+    setState(() => _selectedDate = newDate);
+    _triggerSummaryUpdate();
+  }
+
+  void _onMonthChanged(DateTime newMonth) {
+    setState(() => _selectedMonth = newMonth);
+    _triggerSummaryUpdate();
+  }
+
+  void _onYearChanged(DateTime newYear) {
+    setState(() => _selectedYear = newYear);
+    _triggerSummaryUpdate();
+  }
+
+  void _onRangeChanged(DateTimeRange? newRange) {
+    setState(() => _selectedRange = newRange);
+    _triggerSummaryUpdate();
+  }
+
+  void _onSettingsPressed() {
+    Navigator.pushNamed(context, RouteNames.settings);
+  }
+
+  void _onCategoriesPressed() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const CategoryScreen(),
+        settings: const RouteSettings(arguments: {"type": "expense"}),
+      ),
+    );
+  }
+
+  void _onAddCategoryPressed() {
+    showDialog(
+      context: context,
+      builder: (context) => const CategoryDialog(type: 'expense'),
+    );
+  }
+
+  void _onTitleTap(String categoryId, TitleEntity title) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            ExpenseByTitleScreen(categoryId: categoryId, title: title),
+      ),
+    );
+  }
+
+  void _onBookmarkTap(String categoryId, TitleEntity title) {
+    final titleVM = Provider.of<TitleViewModel>(context, listen: false);
+    final newBookmarkState = !title.bookmark;
+    titleVM.toggleTitleBookmark('expense', title.id, newBookmarkState);
+  }
+
+  // Data Management
   void _triggerSummaryUpdate() {
     final vm = Provider.of<SummaryViewModel>(context, listen: false);
 
@@ -83,81 +161,107 @@ class _ExpenseScreenState extends State<ExpenseScreen>
       _previousDataFuture = _loadPreviousData(vm);
     });
 
-    switch (selectedTab) {
+    final range = _getCurrentDateRange();
+    vm.subscribeWithRange(_mapTabToRange(_selectedTab), range.start, range.end);
+  }
+
+  DateTimeRange _getCurrentDateRange() {
+    switch (_selectedTab) {
       case TimeRangeTab.daily:
         final start = DateTime(
-          selectedDate.year,
-          selectedDate.month,
-          selectedDate.day,
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
         );
         final end = DateTime(
-          selectedDate.year,
-          selectedDate.month,
-          selectedDate.day,
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
           23,
           59,
           59,
         );
-        vm.subscribeWithRange(SummaryTimeRange.daily, start, end);
-        break;
+        return DateTimeRange(start: start, end: end);
 
       case TimeRangeTab.monthly:
-        final start = DateTime(selectedMonth.year, selectedMonth.month, 1);
+        final start = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
         final end = DateTime(
-          selectedMonth.year,
-          selectedMonth.month + 1,
+          _selectedMonth.year,
+          _selectedMonth.month + 1,
           0,
           23,
           59,
         );
-        vm.subscribeWithRange(SummaryTimeRange.monthly, start, end);
-
-        break;
+        return DateTimeRange(start: start, end: end);
 
       case TimeRangeTab.yearly:
-        final start = DateTime(selectedYear.year, 1, 1);
-        final end = DateTime(selectedYear.year, 12, 31, 23, 59, 59);
-        vm.subscribeWithRange(SummaryTimeRange.yearly, start, end);
-        break;
+        final start = DateTime(_selectedYear.year, 1, 1);
+        final end = DateTime(_selectedYear.year, 12, 31, 23, 59, 59);
+        return DateTimeRange(start: start, end: end);
 
       case TimeRangeTab.allTime:
-        DateTime? start = selectedRange?.start;
-        DateTime? end = selectedRange?.end;
-        if (end != null) {
-          end = DateTime(end.year, end.month, end.day, 23, 59, 59, 999);
+        if (_selectedRange == null) {
+          return DateTimeRange(start: DateTime(1900), end: DateTime.now());
         }
-        vm.subscribeWithRange(SummaryTimeRange.allTime, start, end);
-        break;
-    }
-  }
-
-  Future<SummaryData> _loadPreviousData(SummaryViewModel vm) async {
-    switch (selectedTab) {
-      case TimeRangeTab.daily:
-        final prevDate = selectedDate.subtract(const Duration(days: 1));
-        final s = DateTime(prevDate.year, prevDate.month, prevDate.day);
-        final e = DateTime(
-          prevDate.year,
-          prevDate.month,
-          prevDate.day,
+        final end = DateTime(
+          _selectedRange!.end.year,
+          _selectedRange!.end.month,
+          _selectedRange!.end.day,
           23,
           59,
           59,
         );
-        return vm.fetchPeriodData(SummaryTimeRange.daily, s, e);
+        return DateTimeRange(start: _selectedRange!.start, end: end);
+    }
+  }
+
+  Future<SummaryData> _loadPreviousData(SummaryViewModel vm) async {
+    switch (_selectedTab) {
+      case TimeRangeTab.daily:
+        final prevDate = _selectedDate.subtract(const Duration(days: 1));
+        final range = DateTimeRange(
+          start: DateTime(prevDate.year, prevDate.month, prevDate.day),
+          end: DateTime(
+            prevDate.year,
+            prevDate.month,
+            prevDate.day,
+            23,
+            59,
+            59,
+          ),
+        );
+        return vm.fetchPeriodData(
+          SummaryTimeRange.daily,
+          range.start,
+          range.end,
+        );
 
       case TimeRangeTab.monthly:
-        final prevMonth = DateTime(selectedMonth.year, selectedMonth.month - 1);
-
-        final s = DateTime(prevMonth.year, prevMonth.month, 1);
-        final e = DateTime(prevMonth.year, prevMonth.month + 1, 0, 23, 59, 59);
-        return vm.fetchPeriodData(SummaryTimeRange.monthly, s, e);
+        final prevMonth = DateTime(
+          _selectedMonth.year,
+          _selectedMonth.month - 1,
+        );
+        final range = DateTimeRange(
+          start: DateTime(prevMonth.year, prevMonth.month, 1),
+          end: DateTime(prevMonth.year, prevMonth.month + 1, 0, 23, 59, 59),
+        );
+        return vm.fetchPeriodData(
+          SummaryTimeRange.monthly,
+          range.start,
+          range.end,
+        );
 
       case TimeRangeTab.yearly:
-        final prevYear = DateTime(selectedYear.year - 1);
-        final s = DateTime(prevYear.year, 1, 1);
-        final e = DateTime(prevYear.year, 12, 31, 23, 59, 59);
-        return vm.fetchPeriodData(SummaryTimeRange.yearly, s, e);
+        final prevYear = DateTime(_selectedYear.year - 1);
+        final range = DateTimeRange(
+          start: DateTime(prevYear.year, 1, 1),
+          end: DateTime(prevYear.year, 12, 31, 23, 59, 59),
+        );
+        return vm.fetchPeriodData(
+          SummaryTimeRange.yearly,
+          range.start,
+          range.end,
+        );
 
       case TimeRangeTab.allTime:
         return SummaryData(totalIncome: 0, totalExpense: 0, net: 0);
@@ -167,493 +271,66 @@ class _ExpenseScreenState extends State<ExpenseScreen>
   List<ExpenseEntity> _getFilteredExpenses(List<ExpenseEntity> allExpenses) {
     if (allExpenses.isEmpty) return [];
 
-    switch (selectedTab) {
-      case TimeRangeTab.daily:
-        return allExpenses.where((expense) {
-          return expense.date.year == selectedDate.year &&
-              expense.date.month == selectedDate.month &&
-              expense.date.day == selectedDate.day;
-        }).toList();
+    final range = _getCurrentDateRange();
 
-      case TimeRangeTab.monthly:
-        return allExpenses.where((expense) {
-          return expense.date.year == selectedMonth.year &&
-              expense.date.month == selectedMonth.month;
-        }).toList();
-
-      case TimeRangeTab.yearly:
-        return allExpenses.where((expense) {
-          return expense.date.year == selectedYear.year;
-        }).toList();
-
-      case TimeRangeTab.allTime:
-        if (selectedRange == null) return allExpenses;
-
-        final start = DateTime(
-          selectedRange!.start.year,
-          selectedRange!.start.month,
-          selectedRange!.start.day,
-        );
-        final end = DateTime(
-          selectedRange!.end.year,
-          selectedRange!.end.month,
-          selectedRange!.end.day,
-          23,
-          59,
-          59,
-        );
-
-        return allExpenses.where((expense) {
-          return expense.date.isAfter(
-            start.subtract(const Duration(seconds: 1)),
+    return allExpenses.where((expense) {
+      return expense.date.isAfter(
+            range.start.subtract(const Duration(seconds: 1)),
           ) &&
-              expense.date.isBefore(end.add(const Duration(seconds: 1)));
-        }).toList();
+          expense.date.isBefore(range.end.add(const Duration(seconds: 1)));
+    }).toList();
+  }
+
+  // Helper Methods
+  SummaryTimeRange _mapTabToRange(TimeRangeTab tab) {
+    const map = {
+      TimeRangeTab.daily: SummaryTimeRange.daily,
+      TimeRangeTab.monthly: SummaryTimeRange.monthly,
+      TimeRangeTab.yearly: SummaryTimeRange.yearly,
+      TimeRangeTab.allTime: SummaryTimeRange.allTime,
+    };
+    return map[tab]!;
+  }
+
+  String _getPeriodName() {
+    const map = {
+      TimeRangeTab.daily: "Day",
+      TimeRangeTab.monthly: "Month",
+      TimeRangeTab.yearly: "Year",
+    };
+    return map[_selectedTab] ?? "Period";
+  }
+
+  double _calculateExpensePercentage(
+    SummaryData current,
+    SummaryData previous,
+  ) {
+    final isAllTime = _selectedTab == TimeRangeTab.allTime;
+
+    if (isAllTime) {
+      // For All Time: Compare expense to total income
+      return current.totalIncome > 0
+          ? (current.totalExpense / current.totalIncome) * 100
+          : 0;
+    } else {
+      // Period Comparison: Compare to previous period's expense
+      if (previous.totalExpense == 0) {
+        return current.totalExpense > 0 ? 100.0 : 0;
+      } else {
+        return ((current.totalExpense - previous.totalExpense) /
+                previous.totalExpense) *
+            100;
+      }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Scaffold(
-      backgroundColor: colorScheme.surface,
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // ---------------------------------------------------------
-            // Section 1: Expense Header + Charts Area
-            // ---------------------------------------------------------
-            SliverMainAxisGroup(
-              slivers: [
-                // 1.1 Expense Sticky Header
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _StickyHeaderDelegate(
-                    height: kToolbarHeight,
-                    child: Container(
-                      color: colorScheme.surface,
-                      padding: EdgeInsets.only(left: AppPadding.md),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              "Expense", // Title Changed
-                              style: textTheme.headlineSmall?.copyWith(
-                                color: colorScheme.onSurface,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.settings),
-                            color: colorScheme.onSurface,
-                            onPressed: () {
-                              Navigator.pushNamed(context, RouteNames.settings);
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                // 1.2 Chart Content
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      left: AppPadding.md,
-                      right: AppPadding.md,
-                      bottom: AppPadding.sm,
-                    ),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 10),
-                        TimeRangeTabWidget(
-                          selectedTab: selectedTab,
-                          onTabSelected: _onTabSelected,
-                        ),
-                        AppGap.md,
-                        Container(
-                          decoration: BoxDecoration(
-                            // Using Error Container for Expense Visualization
-                            color: colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                          ),
-                          clipBehavior: Clip.hardEdge,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: AppPadding.sm,
-                                  horizontal: AppPadding.md,
-                                ),
-                                child: Column(
-                                  children: [
-                                    DateRangePicker(
-                                      selectedTab: selectedTab,
-                                      selectedDate: selectedDate,
-                                      selectedMonth: selectedMonth,
-                                      selectedYear: selectedYear,
-                                      selectedRange: selectedRange,
-                                      onDateChanged: (newDate) {
-                                        setState(() => selectedDate = newDate);
-                                        _triggerSummaryUpdate();
-                                      },
-                                      onMonthChanged: (newMonth) {
-                                        setState(
-                                              () => selectedMonth = newMonth,
-                                        );
-                                        _triggerSummaryUpdate();
-                                      },
-                                      onYearChanged: (newYear) {
-                                        setState(() => selectedYear = newYear);
-                                        _triggerSummaryUpdate();
-                                      },
-                                      onRangeChanged: (newRange) {
-                                        setState(
-                                              () => selectedRange = newRange,
-                                        );
-                                        _triggerSummaryUpdate();
-                                      },
-                                    ),
-                                    Divider(
-                                      height: 1,
-                                      thickness: 1,
-                                      color: colorScheme.outlineVariant
-                                          .withValues(alpha: 0.5),
-                                    ),
-                                    AppGap.md,
-                                    // Stats Display Logic
-                                    Consumer<SummaryViewModel>(
-                                      builder: (_, vm, __) {
-                                        final summary = vm.getSummary(
-                                          _mapTabToRange(selectedTab),
-                                        );
-
-                                        if (summary == null) {
-                                          return vm.isLoading
-                                              ? const Center(
-                                            child:
-                                            CircularProgressIndicator(),
-                                          )
-                                              : const SizedBox();
-                                        }
-
-                                        return FutureBuilder(
-                                          future: _previousDataFuture,
-                                          builder: (_, snap) {
-                                            if (!snap.hasData) {
-                                              return const SizedBox();
-                                            }
-                                            final prev = snap.data!;
-
-                                            double percent = 0;
-                                            bool isAllTime =
-                                                selectedTab ==
-                                                    TimeRangeTab.allTime;
-
-                                            if (isAllTime) {
-                                              // For All Time Expense, we might want to compare to Total Income
-                                              // to show how much we spent vs earned.
-                                              if (summary.totalIncome > 0) {
-                                                percent =
-                                                    (summary.totalExpense /
-                                                        summary.totalIncome) *
-                                                        100;
-                                              } else {
-                                                percent = 0;
-                                              }
-                                            } else {
-                                              // Period Comparison (vs Previous Period)
-                                              if (prev.totalExpense == 0) {
-                                                if (summary.totalExpense > 0) {
-                                                  percent = 100.0;
-                                                }
-                                              } else {
-                                                percent =
-                                                    ((summary.totalExpense -
-                                                        prev.totalExpense) /
-                                                        prev.totalExpense) *
-                                                        100;
-                                              }
-                                            }
-                                            if (percent > 999) percent = 999;
-                                            if (percent < -999) percent = -999;
-
-                                            return Row(
-                                              crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                              children: [
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                    CrossAxisAlignment
-                                                        .start,
-                                                    children: [
-                                                      LabelText(
-                                                        text:
-                                                        "Total ${selectedTab.name} expense",
-                                                        // Optional: Change label color for better contrast on red
-                                                        // color: colorScheme.onErrorContainer,
-                                                      ),
-                                                      const SizedBox(height: 4),
-                                                      CurrencyText(
-                                                        amount:
-                                                        summary.totalExpense,
-                                                        style: textTheme
-                                                            .headlineMedium
-                                                            ?.copyWith(
-                                                          fontWeight:
-                                                          FontWeight
-                                                              .bold,
-                                                          color: colorScheme
-                                                              .onPrimaryContainer,
-                                                        ),
-                                                        useDecimalRatio: true,
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                      ChartLegend(
-                                                        isAllTime: isAllTime,
-                                                        currentPeriodName:
-                                                        "Current ${_mapPeriodName()}",
-                                                        previousPeriodName: isAllTime
-                                                            ? "Total Income"
-                                                            : "Previous ${_mapPeriodName()}",
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                  const EdgeInsets.only(
-                                                    left: 8.0,
-                                                  ),
-                                                  child:
-                                                  PeriodComparisonPieChart(
-                                                    type: ChartType.expense, // Changed to expense
-                                                    currentValue:
-                                                    summary.totalExpense,
-                                                    previousValue: isAllTime
-                                                        ? summary
-                                                        .totalIncome
-                                                        : prev.totalExpense,
-                                                    isAllTime: isAllTime,
-                                                    percentage: percent,
-                                                  ),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              AppGap.sm,
-                              Material(
-                                color: colorScheme.primary, // Red button for Expense
-                                child: InkWell(
-                                  onTap: () => showAddExpenseFullScreen(context),
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Row(
-                                      mainAxisAlignment:
-                                      MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.add,
-                                          color: colorScheme.onPrimary,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          "Add Expense",
-                                          style: textTheme.labelLarge?.copyWith(
-                                            color: colorScheme.onPrimary,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            // ---------------------------------------------------------
-            // Section 2: Categories Header + List Area
-            // ---------------------------------------------------------
-            SliverMainAxisGroup(
-              slivers: [
-                // 2.1 Categories Sticky Header
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _StickyHeaderDelegate(
-                    height: 60.0,
-                    child: Container(
-                      color: colorScheme.surface,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppPadding.md,
-                      ),
-                      alignment: Alignment.center,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              "Categories",
-                              style: textTheme.titleMedium?.copyWith(
-                                color: colorScheme.onSurface,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const CategoryScreen(),
-                                  settings: const RouteSettings(
-                                    arguments: {"type": "expense"}, // Pass expense type
-                                  ),
-                                ),
-                              );
-                            },
-                            icon: Icon(
-                              Icons.arrow_forward,
-                              size: AppIconSize.md,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                // 2.2 List Content
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppPadding.md,
-                  ),
-                  sliver: SliverToBoxAdapter(
-                    child: Consumer<ExpenseViewModel>(
-                      builder: (context, expenseVM, child) {
-                        // 🔥🔥🔥 DEBUG LOGS START 🔥🔥🔥
-                        debugPrint("\n========================================");
-                        debugPrint("📊 EXPENSE UI DEBUG");
-                        debugPrint("1. Is Loading: ${expenseVM.isLoading}");
-                        debugPrint("2. Total Expenses in ViewModel: ${expenseVM.expenses.length}");
-
-                        if (expenseVM.expenses.isNotEmpty) {
-                          final first = expenseVM.expenses.first;
-                          debugPrint("3. First Item Sample: ID=${first.id}, Amount=${first.amount}, Date=${first.date}");
-                        } else {
-                          debugPrint("3. Expenses List is EMPTY ❌");
-                        }
-                        // 🔥🔥🔥 DEBUG LOGS END 🔥🔥🔥
-                        return Consumer<CategoryViewModel>(
-                          builder: (context, categoryVM, child) {
-                            return Consumer<TitleViewModel>(
-                              builder: (context, titleVM, child) {
-                                if (expenseVM.isLoading ||
-                                    categoryVM.isLoading ||
-                                    titleVM.isLoading) {
-                                  return const Padding(
-                                    padding: EdgeInsets.all(20.0),
-                                    child: Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  );
-                                }
-
-                                final filteredExpenses = _getFilteredExpenses(
-                                  expenseVM.expenses,
-                                );
-
-                                // 🔥 Filter ပြီးနောက် Data ကျန်မကျန် စစ်ရန်
-                                debugPrint("4. Filtered Expenses Count: ${filteredExpenses.length}");
-                                debugPrint("========================================\n");
-
-                                // 🔥 Generic Widget ကို ExpenseEntity ဖြင့် အသုံးပြုခြင်း
-                                return CategoryTitleExpansionList<ExpenseEntity>(
-                                  // Data Passing
-                                  categories: categoryVM.expenseCategories,
-                                  titles: titleVM.expenseTitles,
-                                  items: filteredExpenses, // Pass List<ExpenseEntity> to items
-
-                                  // Configuration
-                                  type: TransactionType.expense, // 'expense' ဖြစ်လို့ အနီရောင် theme သုံးမည်
-
-                                  // Data Extractors (Entity ထဲက data ဆွဲထုတ်ပုံ)
-                                  getAmount: (expense) => expense.amount,
-                                  getTitleId: (expense) => expense.titleId,
-
-                                  // Actions
-                                  onTitleTap: (categoryId, title) {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => ExpenseByTitleScreen(
-                                          categoryId: categoryId,
-                                          title: title,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  onBookmarkTap: (categoryId, title) {
-                                    final newBookmarkState = !title.bookmark;
-                                    titleVM.toggleTitleBookmark(
-                                      'expense', // Type is expense
-                                      title.id,
-                                      newBookmarkState,
-                                    );
-                                  },
-                                );
-                              },
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ),
-
-                // Bottom Padding
-                const SliverPadding(
-                  padding: EdgeInsets.only(bottom: AppPadding.xl),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void showAddExpenseFullScreen(BuildContext context) {
+  void _showAddExpenseDialog() {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: "Add Expense",
       transitionDuration: const Duration(milliseconds: 250),
-      pageBuilder: (_, __, ___) => const AddExpenseFullScreen(), // Assumed Widget
+      pageBuilder: (_, __, ___) => const AddExpenseFullScreen(),
       transitionBuilder: (_, anim, __, child) {
         return SlideTransition(
           position: Tween(
@@ -666,34 +343,362 @@ class _ExpenseScreenState extends State<ExpenseScreen>
     );
   }
 
-  SummaryTimeRange _mapTabToRange(TimeRangeTab tab) {
-    switch (tab) {
-      case TimeRangeTab.daily:
-        return SummaryTimeRange.daily;
-      case TimeRangeTab.monthly:
-        return SummaryTimeRange.monthly;
-      case TimeRangeTab.yearly:
-        return SummaryTimeRange.yearly;
-      case TimeRangeTab.allTime:
-        return SummaryTimeRange.allTime;
+  // Widget Builders
+  Widget _buildHeader(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return SliverPersistentHeader(
+      pinned: true,
+      delegate: _StickyHeaderDelegate(
+        height: kToolbarHeight + 50, // appbar height + tab height
+        child: Container(
+          color: colorScheme.surface,
+          padding: const EdgeInsets.symmetric(horizontal: AppPadding.md),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top Row: Title + Settings
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _kScreenTitle,
+                      style: textTheme.headlineSmall?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.settings),
+                    color: colorScheme.onSurface,
+                    onPressed: _onSettingsPressed,
+                  ),
+                ],
+              ),
+              // Spacer
+              const SizedBox(height: 8),
+              // Time Range Tab
+              TimeRangeTabWidget(
+                selectedTab: _selectedTab,
+                onTabSelected: _onTabSelected,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChartSection(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.only(
+          left: AppPadding.md,
+          right: AppPadding.md,
+          bottom: AppPadding.sm,
+        ),
+        child: _buildSummaryCard(context),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: AppPadding.sm,
+              horizontal: AppPadding.md,
+            ),
+            child: Column(
+              children: [
+                DateRangePicker(
+                  selectedTab: _selectedTab,
+                  selectedDate: _selectedDate,
+                  selectedMonth: _selectedMonth,
+                  selectedYear: _selectedYear,
+                  selectedRange: _selectedRange,
+                  onDateChanged: _onDateChanged,
+                  onMonthChanged: _onMonthChanged,
+                  onYearChanged: _onYearChanged,
+                  onRangeChanged: _onRangeChanged,
+                ),
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+                AppGap.md,
+                _buildSummaryContent(),
+              ],
+            ),
+          ),
+          AppGap.sm,
+          _buildAddExpenseButton(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryContent() {
+    return Consumer<SummaryViewModel>(
+      builder: (_, vm, __) {
+        final summary = vm.getSummary(_mapTabToRange(_selectedTab));
+
+        if (summary == null) {
+          return vm.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : const SizedBox();
+        }
+
+        return FutureBuilder<SummaryData>(
+          future: _previousDataFuture,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return const SizedBox();
+
+            final previousData = snapshot.data!;
+            final percentage = _calculateExpensePercentage(
+              summary,
+              previousData,
+            );
+            final isAllTime = _selectedTab == TimeRangeTab.allTime;
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      LabelText(text: "Total ${_selectedTab.name} expense"),
+                      const SizedBox(height: 4),
+                      CurrencyText(
+                        amount: summary.totalExpense,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                        useDecimalRatio: true,
+                      ),
+                      const SizedBox(height: 8),
+                      ChartLegend(
+                        isAllTime: isAllTime,
+                        type: Type.expense,
+                        currentPeriodName: "Current ${_getPeriodName()}",
+                        previousPeriodName: isAllTime
+                            ? "Total Income"
+                            : "Previous ${_getPeriodName()}",
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: PeriodComparisonPieChart(
+                    type: ChartType.expense,
+                    currentValue: summary.totalExpense,
+                    previousValue: isAllTime
+                        ? summary.totalIncome
+                        : previousData.totalExpense,
+                    isAllTime: isAllTime,
+                    percentage: percentage,
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAddExpenseButton(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Material(
+      color: colorScheme.tertiary,
+      child: InkWell(
+        onTap: _showAddExpenseDialog,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.add_circle_outline_rounded,
+                color: colorScheme.onTertiary,
+                size: AppIconSize.sm,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _kAddExpenseText,
+                style: textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onTertiary,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoriesHeader(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return SliverPersistentHeader(
+      pinned: true,
+      delegate: _StickyHeaderDelegate(
+        height: 60.0,
+        child: Container(
+          color: colorScheme.surface,
+          padding: const EdgeInsets.symmetric(horizontal: AppPadding.md),
+          alignment: Alignment.center,
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: _onCategoriesPressed,
+                  behavior: HitTestBehavior.opaque,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.category_rounded,
+                        size: AppIconSize.sm,
+                        color: colorScheme.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _kCategoriesTitle,
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+
+                    ],
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: _onAddCategoryPressed,
+                icon: Icon(
+                  Icons.add_circle,
+                  size: AppIconSize.md,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoriesList() {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: AppPadding.md),
+      sliver: SliverToBoxAdapter(
+        child: Consumer3<ExpenseViewModel, CategoryViewModel, TitleViewModel>(
+          builder: (context, expenseVM, categoryVM, titleVM, child) {
+            // Debug logs for troubleshooting
+            _logExpenseDebugInfo(expenseVM);
+
+            if (expenseVM.isLoading ||
+                categoryVM.isLoading ||
+                titleVM.isLoading) {
+              return const Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            final filteredExpenses = _getFilteredExpenses(expenseVM.expenses);
+
+            return CategoryTitleExpansionList<ExpenseEntity>(
+              categories: categoryVM.expenseCategories,
+              titles: titleVM.expenseTitles,
+              items: filteredExpenses,
+              getItemId: (item) => item.id,
+              type: TransactionType.expense,
+              getAmount: (expense) => expense.amount,
+              getTitleId: (expense) => expense.titleId,
+              onTitleTap: _onTitleTap,
+              onBookmarkTap: _onBookmarkTap,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _logExpenseDebugInfo(ExpenseViewModel expenseVM) {
+    debugPrint("\n========================================");
+    debugPrint("📊 EXPENSE UI DEBUG");
+    debugPrint("1. Is Loading: ${expenseVM.isLoading}");
+    debugPrint("2. Total Expenses in ViewModel: ${expenseVM.expenses.length}");
+
+    if (expenseVM.expenses.isNotEmpty) {
+      final first = expenseVM.expenses.first;
+      debugPrint(
+        "3. First Item Sample: ID=${first.id}, Amount=${first.amount}, Date=${first.date}",
+      );
+    } else {
+      debugPrint("3. Expenses List is EMPTY ❌");
     }
   }
 
-  String _mapPeriodName() {
-    switch (selectedTab) {
-      case TimeRangeTab.daily:
-        return "Day";
-      case TimeRangeTab.monthly:
-        return "Month";
-      case TimeRangeTab.yearly:
-        return "Year";
-      default:
-        return "Period";
-    }
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            // Section 1: Header + Charts
+            SliverMainAxisGroup(
+              slivers: [_buildHeader(context), _buildChartSection(context)],
+            ),
+
+            // Section 2: Categories
+            SliverMainAxisGroup(
+              slivers: [
+                _buildCategoriesHeader(context),
+                _buildCategoriesList(),
+                const SliverPadding(
+                  padding: EdgeInsets.only(bottom: AppPadding.xl),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
-// Reuse the same Delegate
 class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double height;
   final Widget child;
@@ -708,10 +713,10 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-      BuildContext context,
-      double shrinkOffset,
-      bool overlapsContent,
-      ) {
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return SizedBox.expand(child: child);
   }
 

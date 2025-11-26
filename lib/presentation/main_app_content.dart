@@ -63,7 +63,7 @@ class _MainAppContentState extends State<MainAppContent> {
         }
       },
       child: Scaffold(
-        appBar: _currentIndex == 1 || _currentIndex == 2
+        appBar: _currentIndex == 1 || _currentIndex == 2 || _currentIndex == 3
             ? null
             : AppBarWidget(title: _getTitle(_currentIndex)),
 

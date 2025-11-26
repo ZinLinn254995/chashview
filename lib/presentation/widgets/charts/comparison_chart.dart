@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart'; // ✅ 1. Provider import လုပ်ပါ
 import 'package:syncfusion_flutter_charts/charts.dart';
-import '../viewmodels/summary_viewmodel.dart';
-import '../viewmodels/currency_viewmodel.dart'; // ✅ ViewModel import လုပ်ပါ
+import '../../viewmodels/summary_viewmodel.dart';
+import '../../viewmodels/currency_viewmodel.dart'; // ✅ ViewModel import လုပ်ပါ
 
 class ComparisonChart extends StatefulWidget {
   final List<DailySummaryData> data;
@@ -89,6 +89,7 @@ class _ComparisonChartState extends State<ComparisonChart> {
             minimum: validData.isNotEmpty ? validData.first.date : null,
             maximum: validData.isNotEmpty ? validData.last.date : null,
             plotOffsetEnd: 20,
+            plotOffsetStart: 20,
           ),
           primaryYAxis: NumericAxis(
             opposedPosition: true,
@@ -120,7 +121,7 @@ class _ComparisonChartState extends State<ComparisonChart> {
               dataSource: validData,
               xValueMapper: (DailySummaryData sales, _) => sales.date,
               yValueMapper: (DailySummaryData sales, _) => sales.income,
-              color: colorScheme.primary,
+              color: colorScheme.secondary,
               animationDuration: 800,
               width: 0.7,
               spacing: 0.2,
@@ -131,7 +132,7 @@ class _ComparisonChartState extends State<ComparisonChart> {
               dataSource: validData,
               xValueMapper: (DailySummaryData sales, _) => sales.date,
               yValueMapper: (DailySummaryData sales, _) => sales.expense,
-              color: colorScheme.error,
+              color: colorScheme.tertiary,
               animationDuration: 800,
               width: 0.7,
               spacing: 0.2,
@@ -184,13 +185,13 @@ class _ComparisonChartState extends State<ComparisonChart> {
         children: [
           Text(periodText, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Theme.of(context).colorScheme.onSurface)),
           const SizedBox(height: 4),
-          _buildTooltipRow('Income', dailyData.income, colorScheme.primary, currencySymbol),
-          _buildTooltipRow('Expense', dailyData.expense, colorScheme.error, currencySymbol),
+          _buildTooltipRow('Income', dailyData.income, colorScheme.secondary, currencySymbol),
+          _buildTooltipRow('Expense', dailyData.expense, colorScheme.tertiary, currencySymbol),
           const SizedBox(height: 2),
           _buildTooltipRow(
             'Net',
             dailyData.income - dailyData.expense,
-            (dailyData.income - dailyData.expense) >= 0 ? colorScheme.primary : colorScheme.error,
+            (dailyData.income - dailyData.expense) >= 0 ? colorScheme.secondary : colorScheme.tertiary,
             currencySymbol,
             isBold: true,
           ),

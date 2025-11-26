@@ -9,26 +9,20 @@ class LabelText extends StatelessWidget {
   const LabelText({
     super.key,
     required this.text,
-    this.fontSize = 10, // small label size
-    this.fontWeight = FontWeight.w400, // light font weight
+    this.fontSize = 12, // small label size
+    this.fontWeight = FontWeight.w500, // light font weight
   });
 
   @override
   Widget build(BuildContext context) {
-    // context ကိုသုံးပြီး current theme brightness ကိုယူ
-    final brightness = Theme.of(context).brightness;
-    final isDark = brightness == Brightness.dark;
-
-    final color = isDark
-        ? Theme.of(context).colorScheme.onSurfaceVariant // muted color in dark mode
-        : Theme.of(context).colorScheme.onSurfaceVariant; // muted color in light mode
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return Text(
       text,
-      style: TextStyle(
-        color: color,
-        fontSize: fontSize,
-        fontWeight: fontWeight,
+      style: textTheme.labelSmall?.copyWith(
+        color: colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.bold,
       ),
     );
   }

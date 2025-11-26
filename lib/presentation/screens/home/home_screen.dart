@@ -4,7 +4,6 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../widgets/circular_progress_widget.dart';
 import '../../widgets/currency_text.dart';
-import '../../widgets/mini_line_chart.dart';
 import '../../widgets/money_type_text.dart';
 
 class HomeScreen extends StatefulWidget {

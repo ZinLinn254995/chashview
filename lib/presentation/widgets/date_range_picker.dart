@@ -81,8 +81,7 @@ class DateRangePicker extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: theme.textTheme.labelMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface, // Or Primary depending on design
-                  fontSize: 16,
+                  color: colorScheme.onSurface,
                 ),
               ),
             ),
