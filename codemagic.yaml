@@ -3,10 +3,10 @@ workflows:
     name: iOS Build for Personal Use
     environment:
       vars:
-        APPLE_ID: "zla264995@gmail.com"          # သင့် email ထည့်ပါ
-        APPLE_ID_PASSWORD: "kqtj-isgs-qvov-scio"  # app-specific password ထည့်ပါ
+        APPLE_ID: "zla264995@gmail.com"
       ios_signing:
         distribution_type: development
+
     triggering:
       events:
         - push
@@ -26,4 +26,4 @@ workflows:
     publishing:
       email:
         recipients:
-          - your_email@gmail.com
+          - zla264995@gmail.com
