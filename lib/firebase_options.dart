@@ -48,13 +48,13 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyCmZWaaC-q3_GpWpXtZQdkISadaM4VG-a4',
-    appId: '1:739597429843:web:c2eaf763010cf2fe512aa6',
+    appId: '1:739597429843:web:de1caec21aff5e5a512aa6',
     messagingSenderId: '739597429843',
     projectId: 'richupapp',
     authDomain: 'richupapp.firebaseapp.com',
     databaseURL: 'https://richupapp-default-rtdb.firebaseio.com',
     storageBucket: 'richupapp.firebasestorage.app',
-    measurementId: 'G-R9CV3FKX3Y',
+    measurementId: 'G-G12FD119JQ',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -77,4 +77,5 @@ class DefaultFirebaseOptions {
     iosClientId: '739597429843-28hg99u6gq4adfrd9i6qf8nag249o85p.apps.googleusercontent.com',
     iosBundleId: 'com.simplewaytechnology.chashview',
   );
+
 }

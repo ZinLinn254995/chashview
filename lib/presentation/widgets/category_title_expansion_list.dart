@@ -17,6 +17,8 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
   final List<T> items; // IncomeEntity or ExpenseEntity list
   final TransactionType type; // income or expense
 
+  final String searchQuery;
+
   final double Function(T) getAmount;
   final String Function(T) getTitleId;
   final String Function(T) getItemId;
@@ -35,6 +37,7 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
     required this.getItemId,
     required this.onTitleTap,
     required this.onBookmarkTap,
+    this.searchQuery = '',
   });
 
   @override
@@ -116,6 +119,11 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
         final categoryTotalAmount = data.totalAmount;
         final int titlesCount = categoryTitles.length;
         final int recordsCount = data.items.length;
+
+        final bool shouldAutoExpand = searchQuery.isNotEmpty &&
+            (category.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                categoryTitles.any((title) =>
+                    title.name.toLowerCase().contains(searchQuery.toLowerCase())));
 
         final double percentage = grandTotal == 0
             ? 0.0
@@ -252,6 +260,7 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
             child: ExpansionTile(
               shape: const Border(),
               collapsedShape: const Border(),
+              initiallyExpanded: shouldAutoExpand,
               tilePadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 8,
@@ -640,6 +649,4 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
       ),
     );
   }
-
-
 }

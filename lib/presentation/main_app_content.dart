@@ -1,8 +1,6 @@
 import 'dart:io'; // For exit(0)
 import 'package:flutter/material.dart';
 
-// Widgets
-import 'widgets/app_bar_widget.dart';
 import 'widgets/bottom_nav_bar.dart';
 
 // Screens
@@ -30,22 +28,6 @@ class _MainAppContentState extends State<MainAppContent> {
     ProfileScreen(), // Index 4
   ];
 
-  String _getTitle(int index) {
-    switch (index) {
-      case 0:
-        return 'Home';
-      case 1:
-        return 'Income';
-      case 2:
-        return 'Expense';
-      case 3:
-        return 'Chart';
-      case 4:
-        return 'Profile';
-      default:
-        return 'CashView';
-    }
-  }
 
   void _onTabTapped(int index) {
     setState(() {
@@ -63,9 +45,6 @@ class _MainAppContentState extends State<MainAppContent> {
         }
       },
       child: Scaffold(
-        appBar: _currentIndex == 1 || _currentIndex == 2 || _currentIndex == 3
-            ? null
-            : AppBarWidget(title: _getTitle(_currentIndex)),
 
         body: IndexedStack(index: _currentIndex, children: _screens),
 

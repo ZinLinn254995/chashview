@@ -2,9 +2,9 @@ import 'package:chashview/presentation/widgets/currency_text.dart';
 import 'package:chashview/presentation/widgets/label_text.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/routing/route_names.dart';
+import '../../../domain/entities/category_entity.dart';
 import '../../../domain/entities/income_entity.dart';
 import '../../../domain/entities/title_entity.dart';
 import '../../viewmodels/category_viewmodel.dart';
@@ -12,13 +12,13 @@ import '../../viewmodels/income_viewmodel.dart';
 import '../../viewmodels/summary_viewmodel.dart';
 import '../../viewmodels/title_viewmodel.dart';
 import '../../widgets/add_income_dialog.dart';
+import '../../widgets/add_title_dialog.dart';
 import '../../widgets/category_dialog.dart';
 import '../../widgets/category_title_expansion_list.dart';
 import '../../widgets/chart_legend.dart';
 import '../../widgets/charts/period_comparison_pie_chart.dart';
 import '../../widgets/date_range_picker.dart';
 import '../../widgets/time_range_tab.dart';
-import '../category/category_screen.dart';
 import 'income_by_title_screen.dart';
 
 class IncomeScreen extends StatefulWidget {
@@ -33,7 +33,6 @@ class _IncomeScreenState extends State<IncomeScreen>
   // Constants
   static const _kScreenTitle = "Income";
   static const _kCategoriesTitle = "INCOMES BY CATEGORIES";
-  static const _kAddIncomeText = "ADD INCOME";
 
   // State variables
   late TimeRangeTab _selectedTab;
@@ -41,6 +40,11 @@ class _IncomeScreenState extends State<IncomeScreen>
   late DateTime _selectedMonth;
   late DateTime _selectedYear;
   DateTimeRange? _selectedRange;
+
+  // NEW: Search state
+  String _searchQuery = '';
+  bool _isSearchExpanded = false; // To track visibility
+  final FocusNode _searchFocusNode = FocusNode(); // To auto-focus
 
   // Async data
   Future<SummaryData>? _previousDataFuture;
@@ -55,6 +59,12 @@ class _IncomeScreenState extends State<IncomeScreen>
     _scheduleInitialLoad();
   }
 
+  @override
+  void dispose() {
+    _searchFocusNode.dispose(); // Clean up focus node
+    super.dispose();
+  }
+
   void _initializeState() {
     final now = DateTime.now();
     _selectedTab = TimeRangeTab.daily;
@@ -62,6 +72,8 @@ class _IncomeScreenState extends State<IncomeScreen>
     _selectedMonth = DateTime(now.year, now.month);
     _selectedYear = DateTime(now.year);
     _selectedRange = null;
+    _searchQuery = '';
+    _isSearchExpanded = false;
   }
 
   void _scheduleInitialLoad() {
@@ -120,16 +132,6 @@ class _IncomeScreenState extends State<IncomeScreen>
     Navigator.pushNamed(context, RouteNames.settings);
   }
 
-  void _onCategoriesPressed() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const CategoryScreen(),
-        settings: const RouteSettings(arguments: {"type": "income"}),
-      ),
-    );
-  }
-
   void _onAddCategoryPressed() {
     showDialog(
       context: context,
@@ -151,6 +153,99 @@ class _IncomeScreenState extends State<IncomeScreen>
     final titleVM = Provider.of<TitleViewModel>(context, listen: false);
     final newBookmarkState = !title.bookmark;
     titleVM.toggleTitleBookmark('income', title.id, newBookmarkState);
+  }
+
+  // NEW: Search methods
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query.trim();
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearchExpanded = !_isSearchExpanded;
+      if (_isSearchExpanded) {
+        _searchFocusNode.requestFocus(); // Auto focus when opened
+        // Auto-scroll removed as requested
+      } else {
+        _searchQuery = ''; // Clear query when closed
+        _searchFocusNode.unfocus();
+      }
+    });
+  }
+
+  // FAB Handler - Shows Options
+  void _onFabPressed() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.lg),
+        ),
+      ),
+      builder: (BuildContext context) {
+        final colorScheme = Theme.of(context).colorScheme;
+        final textTheme = Theme.of(context).textTheme;
+
+        return SafeArea(
+          child: Wrap(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(AppPadding.md),
+                child: Text(
+                  "Create New",
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.primary,
+                  ),
+                ),
+              ),
+              // 1. Add Income
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: colorScheme.secondaryContainer,
+                  child: Icon(Icons.attach_money, color: colorScheme.secondary),
+                ),
+                title: const Text('Add Income'),
+                subtitle: const Text('Record a new income transaction'),
+                onTap: () {
+                  Navigator.pop(context); // Close the sheet
+                  _showAddIncomeDialog();
+                },
+              ),
+              // 2. Add Title
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: colorScheme.tertiaryContainer,
+                  child: Icon(Icons.title, color: colorScheme.tertiary),
+                ),
+                title: const Text('Add Title'),
+                subtitle: const Text('Create a new income title'),
+                onTap: () {
+                  Navigator.pop(context); // Close the sheet
+                  _showAddTitleDialog();
+                },
+              ),
+              // 3. Add Category
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: colorScheme.primaryContainer,
+                  child: Icon(Icons.folder_open, color: colorScheme.primary),
+                ),
+                title: const Text('Add Category'),
+                subtitle: const Text('Create a new income category'),
+                onTap: () {
+                  Navigator.pop(context); // Close the sheet
+                  _onAddCategoryPressed();
+                },
+              ),
+              const SizedBox(height: AppPadding.lg),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   // Data Management
@@ -190,6 +285,7 @@ class _IncomeScreenState extends State<IncomeScreen>
           _selectedMonth.month + 1,
           0,
           23,
+          59,
           59,
         );
         return DateTimeRange(start: start, end: end);
@@ -275,8 +371,8 @@ class _IncomeScreenState extends State<IncomeScreen>
 
     return allIncomes.where((income) {
       return income.date.isAfter(
-            range.start.subtract(const Duration(seconds: 1)),
-          ) &&
+        range.start.subtract(const Duration(seconds: 1)),
+      ) &&
           income.date.isBefore(range.end.add(const Duration(seconds: 1)));
     }).toList();
   }
@@ -320,6 +416,14 @@ class _IncomeScreenState extends State<IncomeScreen>
     );
   }
 
+  void _showAddTitleDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => const AddTitleDialog(type: 'income'),
+    );
+  }
+
+
   // Widget Builders
   Widget _buildHeader(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -336,7 +440,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top Row: Title + Settings
+              // Top Row: Title + Profile Avatar
               Row(
                 children: [
                   Expanded(
@@ -424,7 +528,6 @@ class _IncomeScreenState extends State<IncomeScreen>
             ),
           ),
           AppGap.sm,
-          _buildAddIncomeButton(colorScheme, textTheme),
         ],
       ),
     );
@@ -462,9 +565,9 @@ class _IncomeScreenState extends State<IncomeScreen>
                         amount: summary.totalIncome,
                         style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                         useDecimalRatio: true,
                       ),
                       const SizedBox(height: 8),
@@ -501,139 +604,145 @@ class _IncomeScreenState extends State<IncomeScreen>
     final isAllTime = _selectedTab == TimeRangeTab.allTime;
 
     if (isAllTime) {
+      // For All Time: Compare net income (Income - Expense) to Total Income
       return current.totalIncome > 0
           ? ((current.totalIncome - current.totalExpense) /
-                    current.totalIncome) *
-                100
+          current.totalIncome) *
+          100
           : 0;
     } else {
+      // Period Comparison: Compare to previous period's income
       if (previous.totalIncome == 0) {
         return current.totalIncome > 0 ? 100.0 : 0;
       } else {
         return ((current.totalIncome - previous.totalIncome) /
-                previous.totalIncome) *
+            previous.totalIncome) *
             100;
       }
     }
   }
 
-  Widget _buildAddIncomeButton(ColorScheme colorScheme, TextTheme textTheme) {
-    return Material(
-      color: colorScheme.secondary,
-      child: InkWell(
-        onTap: _showAddIncomeDialog,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.add_circle_outline_rounded,
-                color: colorScheme.onSecondary,
-                size: AppIconSize.sm,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _kAddIncomeText,
-                style: textTheme.labelSmall?.copyWith(
-                  color: colorScheme.onSecondary,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
+  // NEW: Refined Search Box Widget (Cleaner UI)
+  Widget _buildSearchBox(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      height: 48.0,
+      margin: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: TextField(
+        controller: TextEditingController(text: _searchQuery)
+          ..selection =
+          TextSelection.fromPosition(TextPosition(offset: _searchQuery.length)),
+        focusNode: _searchFocusNode,
+        onChanged: _onSearchChanged,
+        textAlignVertical: TextAlignVertical.center,
+        style: textTheme.bodyMedium?.copyWith(
+          color: colorScheme.onSurface,
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: "Search categories...",
+          hintStyle: textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
           ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: 20,
+            color: colorScheme.primary,
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+            icon: const Icon(Icons.close_rounded, size: 18),
+            color: colorScheme.onSurfaceVariant,
+            onPressed: () => _onSearchChanged(''),
+          )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
         ),
       ),
     );
   }
 
-  /*Widget _buildCategoriesHeader(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return SliverPersistentHeader(
-      pinned: true,
-      delegate: _StickyHeaderDelegate(
-        height: 60.0,
-        child: Container(
-          color: colorScheme.surface,
-          padding: const EdgeInsets.symmetric(horizontal: AppPadding.md),
-          alignment: Alignment.center,
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _kCategoriesTitle,
-                  style: textTheme.titleMedium?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: _onCategoriesPressed,
-                icon: Icon(Icons.arrow_forward, size: AppIconSize.md),
-              ),
-              IconButton(
-                onPressed: _onAddCategoryPressed,
-                icon: Icon(Icons.add_circle_outline_rounded, size: AppIconSize.md),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }*/
-
+  // UPDATED: Categories Header with Animated Toggle
   Widget _buildCategoriesHeader(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    // Dynamic height calculation
+    // Collapsed: 56.0 (Title row)
+    // Expanded: 56.0 (Title row) + 64.0 (Search box + margin)
+    final double headerHeight = _isSearchExpanded ? 120.0 : 56.0;
+
     return SliverPersistentHeader(
       pinned: true,
       delegate: _StickyHeaderDelegate(
-        height: 60.0,
+        height: headerHeight,
         child: Container(
           color: colorScheme.surface,
           padding: const EdgeInsets.symmetric(horizontal: AppPadding.md),
-          alignment: Alignment.center,
-          child: Row(
+          child: Column(
+            mainAxisAlignment: _isSearchExpanded
+                ? MainAxisAlignment.start
+                : MainAxisAlignment.center,
             children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: _onCategoriesPressed,
-                  behavior: HitTestBehavior.opaque,
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.category_rounded,
-                        size: AppIconSize.sm,
-                        color: colorScheme.primary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _kCategoriesTitle,
-                        style: textTheme.labelSmall?.copyWith(
+              // Row: Label + Search Icon/Action
+              SizedBox(
+                height: 56.0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Left: Label
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.category_rounded,
+                          size: AppIconSize.sm,
                           color: colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
                         ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _kCategoriesTitle,
+                          style: textTheme.labelSmall?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Right: Search Toggle Button
+                    IconButton(
+                      onPressed: _toggleSearch,
+                      icon: Icon(
+                        _isSearchExpanded ? Icons.close : Icons.search,
+                        color: _isSearchExpanded
+                            ? colorScheme.error
+                            : colorScheme.onSurfaceVariant,
                       ),
-                    ],
-                  ),
+                      tooltip: _isSearchExpanded ? 'Close Search' : 'Search',
+                      style: IconButton.styleFrom(
+                        backgroundColor: _isSearchExpanded
+                            ? colorScheme.errorContainer
+                            : colorScheme.surfaceContainerLow,
+                        foregroundColor: _isSearchExpanded
+                            ? colorScheme.onErrorContainer
+                            : colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              IconButton(
-                onPressed: _onAddCategoryPressed,
-                icon: Icon(
-                  Icons.add_circle,
-                  size: AppIconSize.md,
-                  color: colorScheme.primary,
-                ),
-              ),
+
+              // Animated Search Box
+              if (_isSearchExpanded)
+                _buildSearchBox(context),
             ],
           ),
         ),
@@ -641,6 +750,7 @@ class _IncomeScreenState extends State<IncomeScreen>
     );
   }
 
+  // UPDATED: Categories List with Search Filtering
   Widget _buildCategoriesList() {
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: AppPadding.md),
@@ -658,16 +768,49 @@ class _IncomeScreenState extends State<IncomeScreen>
 
             final filteredIncomes = _getFilteredIncomes(incomeVM.incomes);
 
+            // Filter categories and titles based on search query
+            List<CategoryEntity> filteredCategories = categoryVM.incomeCategories;
+            List<TitleEntity> filteredTitles = titleVM.incomeTitles;
+            List<IncomeEntity> filteredItems = filteredIncomes;
+
+            if (_searchQuery.isNotEmpty) {
+              final query = _searchQuery.toLowerCase();
+
+              // Filter titles that match search
+              filteredTitles = titleVM.incomeTitles.where((title) {
+                return title.name.toLowerCase().contains(query);
+              }).toList();
+
+              // Get category IDs from filtered titles
+              final matchingCategoryIds = filteredTitles
+                  .map((title) => title.categoryId)
+                  .toSet();
+
+              // Filter categories that match search directly OR have matching titles
+              filteredCategories = categoryVM.incomeCategories.where((category) {
+                return category.name.toLowerCase().contains(query) ||
+                    matchingCategoryIds.contains(category.id);
+              }).toList();
+
+              // Filter items to only include those from filtered titles
+              final filteredTitleIds = filteredTitles.map((t) => t.id).toSet();
+              filteredItems = filteredIncomes.where((income) {
+                return filteredTitleIds.contains(income.titleId);
+              }).toList();
+            }
+
             return CategoryTitleExpansionList<IncomeEntity>(
-              categories: categoryVM.incomeCategories,
-              titles: titleVM.incomeTitles,
-              items: filteredIncomes,
+              categories: filteredCategories,
+              titles: filteredTitles,
+              items: filteredItems,
               getItemId: (item) => item.id,
               type: TransactionType.income,
               getAmount: (income) => income.amount,
               getTitleId: (income) => income.titleId,
               onTitleTap: _onTitleTap,
               onBookmarkTap: _onBookmarkTap,
+              // Pass search query for smart expansion behavior
+              searchQuery: _searchQuery,
             );
           },
         ),
@@ -679,27 +822,42 @@ class _IncomeScreenState extends State<IncomeScreen>
   Widget build(BuildContext context) {
     super.build(context);
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // Section 1: Header + Charts
-            SliverMainAxisGroup(
-              slivers: [_buildHeader(context), _buildChartSection(context)],
-            ),
-
-            // Section 2: Categories
-            SliverMainAxisGroup(
-              slivers: [
-                _buildCategoriesHeader(context),
-                _buildCategoriesList(),
-                const SliverPadding(
-                  padding: EdgeInsets.only(bottom: AppPadding.xl),
+    // UPDATED: Wrap in GestureDetector to hide keyboard on tap outside
+    return GestureDetector(
+      onTap: () {
+        // Unfocus keyboard when tapping outside of inputs
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        body: SafeArea(
+          child: CustomScrollView(
+            slivers: [
+              // Section 1: Header + Charts
+              // UPDATED: Hide this section when search is expanded
+              if (!_isSearchExpanded)
+                SliverMainAxisGroup(
+                  slivers: [_buildHeader(context), _buildChartSection(context)],
                 ),
-              ],
-            ),
-          ],
+
+              // Section 2: Categories with Search
+              SliverMainAxisGroup(
+                slivers: [
+                  _buildCategoriesHeader(context),
+                  _buildCategoriesList(),
+                  const SliverPadding(
+                    padding: EdgeInsets.only(bottom: 80),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _onFabPressed,
+          backgroundColor: Theme.of(context).colorScheme.secondary,
+          foregroundColor: Theme.of(context).colorScheme.onSecondary,
+          child: const Icon(Icons.add),
         ),
       ),
     );
@@ -720,10 +878,10 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
+      BuildContext context,
+      double shrinkOffset,
+      bool overlapsContent,
+      ) {
     return SizedBox.expand(child: child);
   }
 

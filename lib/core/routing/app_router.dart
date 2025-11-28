@@ -1,3 +1,4 @@
+import 'package:chashview/presentation/screens/profile/profile_screen.dart';
 import 'package:flutter/material.dart';
 import '../../core/routing/route_names.dart';
 
@@ -35,6 +36,9 @@ class AppRouter {
 
       case RouteNames.lessonOne:
         return MaterialPageRoute(builder: (_) => const DesignSystemScreen());
+
+      case RouteNames.profile:
+        return MaterialPageRoute(builder: (_) => const ProfileScreen());
 
     // 🔥 Category Screen
       case RouteNames.category:

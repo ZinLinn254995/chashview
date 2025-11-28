@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/routing/route_names.dart';
+import '../../../domain/entities/category_entity.dart'; // Added CategoryEntity import for filtering
 import '../../../domain/entities/expense_entity.dart';
 import '../../../domain/entities/title_entity.dart';
 import '../../viewmodels/category_viewmodel.dart';
@@ -12,13 +13,14 @@ import '../../viewmodels/expense_viewmodel.dart';
 import '../../viewmodels/summary_viewmodel.dart';
 import '../../viewmodels/title_viewmodel.dart';
 import '../../widgets/add_expense_dialog.dart';
+import '../../widgets/add_title_dialog.dart';
 import '../../widgets/category_dialog.dart';
 import '../../widgets/category_title_expansion_list.dart';
-import '../../widgets/chart_legend.dart';
 import '../../widgets/charts/period_comparison_pie_chart.dart';
+import '../../widgets/chart_legend.dart';
 import '../../widgets/date_range_picker.dart';
 import '../../widgets/time_range_tab.dart';
-import '../category/category_screen.dart';
+import '../category/category_screen.dart'; // Ensure this is imported if needed for _onCategoriesPressed
 import 'expense_by_title_screen.dart';
 
 class ExpenseScreen extends StatefulWidget {
@@ -33,7 +35,6 @@ class _ExpenseScreenState extends State<ExpenseScreen>
   // Constants
   static const _kScreenTitle = "Expense";
   static const _kCategoriesTitle = "EXPENSES BY CATEGORY";
-  static const _kAddExpenseText = "ADD EXPENSE";
 
   // State variables
   late TimeRangeTab _selectedTab;
@@ -41,6 +42,11 @@ class _ExpenseScreenState extends State<ExpenseScreen>
   late DateTime _selectedMonth;
   late DateTime _selectedYear;
   DateTimeRange? _selectedRange;
+
+  // NEW: Search state
+  String _searchQuery = '';
+  bool _isSearchExpanded = false; // To track visibility
+  final FocusNode _searchFocusNode = FocusNode(); // To auto-focus
 
   // Async data
   Future<SummaryData>? _previousDataFuture;
@@ -55,6 +61,12 @@ class _ExpenseScreenState extends State<ExpenseScreen>
     _scheduleInitialLoad();
   }
 
+  @override
+  void dispose() {
+    _searchFocusNode.dispose(); // Clean up focus node
+    super.dispose();
+  }
+
   void _initializeState() {
     final now = DateTime.now();
     _selectedTab = TimeRangeTab.daily;
@@ -62,6 +74,9 @@ class _ExpenseScreenState extends State<ExpenseScreen>
     _selectedMonth = DateTime(now.year, now.month);
     _selectedYear = DateTime(now.year);
     _selectedRange = null;
+    // Initialize search state
+    _searchQuery = '';
+    _isSearchExpanded = false;
   }
 
   void _scheduleInitialLoad() {
@@ -151,6 +166,98 @@ class _ExpenseScreenState extends State<ExpenseScreen>
     final titleVM = Provider.of<TitleViewModel>(context, listen: false);
     final newBookmarkState = !title.bookmark;
     titleVM.toggleTitleBookmark('expense', title.id, newBookmarkState);
+  }
+
+  // NEW: Search methods
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query.trim();
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearchExpanded = !_isSearchExpanded;
+      if (_isSearchExpanded) {
+        // Clear query when expanding search, then focus
+        _searchQuery = '';
+        _searchFocusNode.requestFocus();
+      } else {
+        _searchQuery = ''; // Clear query when closed
+        _searchFocusNode.unfocus();
+      }
+    });
+  }
+
+  // FAB Handler - Shows Options
+  void _onFabPressed() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.lg),
+        ),
+      ),
+      builder: (BuildContext context) {
+        final colorScheme = Theme.of(context).colorScheme;
+        final textTheme = Theme.of(context).textTheme;
+
+        return SafeArea(
+          child: Wrap(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(AppPadding.md),
+                child: Text(
+                  "Create New",
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.primary,
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: colorScheme.tertiaryContainer,
+                  child: Icon(Icons.money_off, color: colorScheme.tertiary),
+                ),
+                title: const Text('Add Expense'),
+                subtitle: const Text('Record a new expense transaction'),
+                onTap: () {
+                  Navigator.pop(context); // Close the sheet
+                  _showAddExpenseDialog();
+                },
+              ),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: colorScheme.secondaryContainer,
+                  child: Icon(Icons.title, color: colorScheme.secondary),
+                ),
+                title: const Text('Add Title'),
+                subtitle: const Text('Create a new expense title'),
+                onTap: () {
+                  Navigator.pop(context); // Close the sheet
+                  _showAddTitleDialog();
+                },
+              ),
+              // 3. Add Category
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: colorScheme.primaryContainer,
+                  child: Icon(Icons.folder_open, color: colorScheme.primary),
+                ),
+                title: const Text('Add Category'),
+                subtitle: const Text('Create a new expense category'),
+                onTap: () {
+                  Navigator.pop(context); // Close the sheet
+                  _onAddCategoryPressed();
+                },
+              ),
+              const SizedBox(height: AppPadding.lg),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   // Data Management
@@ -275,8 +382,8 @@ class _ExpenseScreenState extends State<ExpenseScreen>
 
     return allExpenses.where((expense) {
       return expense.date.isAfter(
-            range.start.subtract(const Duration(seconds: 1)),
-          ) &&
+        range.start.subtract(const Duration(seconds: 1)),
+      ) &&
           expense.date.isBefore(range.end.add(const Duration(seconds: 1)));
     }).toList();
   }
@@ -302,9 +409,9 @@ class _ExpenseScreenState extends State<ExpenseScreen>
   }
 
   double _calculateExpensePercentage(
-    SummaryData current,
-    SummaryData previous,
-  ) {
+      SummaryData current,
+      SummaryData previous,
+      ) {
     final isAllTime = _selectedTab == TimeRangeTab.allTime;
 
     if (isAllTime) {
@@ -318,7 +425,7 @@ class _ExpenseScreenState extends State<ExpenseScreen>
         return current.totalExpense > 0 ? 100.0 : 0;
       } else {
         return ((current.totalExpense - previous.totalExpense) /
-                previous.totalExpense) *
+            previous.totalExpense) *
             100;
       }
     }
@@ -340,6 +447,60 @@ class _ExpenseScreenState extends State<ExpenseScreen>
           child: child,
         );
       },
+    );
+  }
+
+  void _showAddTitleDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => const AddTitleDialog(type: 'expense'),
+    );
+  }
+
+  // NEW: Search Box Widget
+  Widget _buildSearchBox(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      height: 48.0,
+      margin: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: TextField(
+        controller: TextEditingController(text: _searchQuery)
+          ..selection = TextSelection.fromPosition(
+              TextPosition(offset: _searchQuery.length)),
+        focusNode: _searchFocusNode,
+        onChanged: _onSearchChanged,
+        textAlignVertical: TextAlignVertical.center,
+        style: textTheme.bodyMedium?.copyWith(
+          color: colorScheme.onSurface,
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: "Search categories...",
+          hintStyle: textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: 20,
+            color: colorScheme.primary,
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+            icon: const Icon(Icons.close_rounded, size: 18),
+            color: colorScheme.onSurfaceVariant,
+            onPressed: () => _onSearchChanged(''),
+          )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+        ),
+      ),
     );
   }
 
@@ -446,7 +607,6 @@ class _ExpenseScreenState extends State<ExpenseScreen>
             ),
           ),
           AppGap.sm,
-          _buildAddExpenseButton(context),
         ],
       ),
     );
@@ -488,9 +648,9 @@ class _ExpenseScreenState extends State<ExpenseScreen>
                         amount: summary.totalExpense,
                         style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                         useDecimalRatio: true,
                       ),
                       const SizedBox(height: 8),
@@ -525,89 +685,85 @@ class _ExpenseScreenState extends State<ExpenseScreen>
     );
   }
 
-  Widget _buildAddExpenseButton(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Material(
-      color: colorScheme.tertiary,
-      child: InkWell(
-        onTap: _showAddExpenseDialog,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.add_circle_outline_rounded,
-                color: colorScheme.onTertiary,
-                size: AppIconSize.sm,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _kAddExpenseText,
-                style: textTheme.labelSmall?.copyWith(
-                  color: colorScheme.onTertiary,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
+  // UPDATED: Categories Header with Search Toggle and dynamic height
   Widget _buildCategoriesHeader(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    // Dynamic height calculation: 56.0 for the row + 8 + 48.0 for search box + 8 padding
+    final double headerHeight = _isSearchExpanded ? 120.0 : 56.0;
+
     return SliverPersistentHeader(
       pinned: true,
       delegate: _StickyHeaderDelegate(
-        height: 60.0,
+        height: headerHeight,
         child: Container(
           color: colorScheme.surface,
           padding: const EdgeInsets.symmetric(horizontal: AppPadding.md),
-          alignment: Alignment.center,
-          child: Row(
+          child: Column(
+            mainAxisAlignment: _isSearchExpanded
+                ? MainAxisAlignment.start
+                : MainAxisAlignment.center,
             children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: _onCategoriesPressed,
-                  behavior: HitTestBehavior.opaque,
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.category_rounded,
-                        size: AppIconSize.sm,
-                        color: colorScheme.primary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _kCategoriesTitle,
-                        style: textTheme.labelSmall?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
+              // Row: Label + Search/Add Icons
+              SizedBox(
+                height: 56.0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Left: Label + Navigation
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _onCategoriesPressed, // Navigate to category screen
+                        behavior: HitTestBehavior.opaque,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.category_rounded,
+                              size: AppIconSize.sm,
+                              color: colorScheme.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _kCategoriesTitle,
+                              style: textTheme.labelSmall?.copyWith(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                    ),
 
-                    ],
-                  ),
+                    // Center: Search Toggle Button
+                    IconButton(
+                      onPressed: _toggleSearch,
+                      icon: Icon(
+                        _isSearchExpanded ? Icons.close : Icons.search,
+                        color: _isSearchExpanded
+                            ? colorScheme.error
+                            : colorScheme.onSurfaceVariant,
+                      ),
+                      tooltip: _isSearchExpanded ? 'Close Search' : 'Search',
+                      style: IconButton.styleFrom(
+                        backgroundColor: _isSearchExpanded
+                            ? colorScheme.errorContainer.withValues(alpha: 0.3)
+                            : colorScheme.surfaceContainerLow,
+                        foregroundColor: _isSearchExpanded
+                            ? colorScheme.onErrorContainer
+                            : colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    // Add Category button is now in FAB, so remove it here
+                  ],
                 ),
               ),
-              IconButton(
-                onPressed: _onAddCategoryPressed,
-                icon: Icon(
-                  Icons.add_circle,
-                  size: AppIconSize.md,
-                  color: colorScheme.primary,
-                ),
-              ),
+
+              // Animated Search Box
+              if (_isSearchExpanded)
+                _buildSearchBox(context),
             ],
           ),
         ),
@@ -615,15 +771,13 @@ class _ExpenseScreenState extends State<ExpenseScreen>
     );
   }
 
+  // UPDATED: Categories List with Search Filtering
   Widget _buildCategoriesList() {
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: AppPadding.md),
       sliver: SliverToBoxAdapter(
         child: Consumer3<ExpenseViewModel, CategoryViewModel, TitleViewModel>(
           builder: (context, expenseVM, categoryVM, titleVM, child) {
-            // Debug logs for troubleshooting
-            _logExpenseDebugInfo(expenseVM);
-
             if (expenseVM.isLoading ||
                 categoryVM.isLoading ||
                 titleVM.isLoading) {
@@ -635,16 +789,49 @@ class _ExpenseScreenState extends State<ExpenseScreen>
 
             final filteredExpenses = _getFilteredExpenses(expenseVM.expenses);
 
+            // Filter categories and titles based on search query
+            List<CategoryEntity> filteredCategories =
+                categoryVM.expenseCategories;
+            List<TitleEntity> filteredTitles = titleVM.expenseTitles;
+            List<ExpenseEntity> filteredItems = filteredExpenses;
+
+            if (_searchQuery.isNotEmpty) {
+              final query = _searchQuery.toLowerCase();
+
+              // 1. Filter titles that match search (by name)
+              filteredTitles = titleVM.expenseTitles.where((title) {
+                return title.name.toLowerCase().contains(query);
+              }).toList();
+
+              // 2. Get category IDs from filtered titles
+              final matchingCategoryIds =
+              filteredTitles.map((title) => title.categoryId).toSet();
+
+              // 3. Filter categories that match search directly OR have matching titles
+              filteredCategories =
+                  categoryVM.expenseCategories.where((category) {
+                    return category.name.toLowerCase().contains(query) ||
+                        matchingCategoryIds.contains(category.id);
+                  }).toList();
+
+              // 4. Filter items to only include those from filtered titles
+              final filteredTitleIds = filteredTitles.map((t) => t.id).toSet();
+              filteredItems = filteredExpenses.where((expense) {
+                return filteredTitleIds.contains(expense.titleId);
+              }).toList();
+            }
+
             return CategoryTitleExpansionList<ExpenseEntity>(
-              categories: categoryVM.expenseCategories,
-              titles: titleVM.expenseTitles,
-              items: filteredExpenses,
+              categories: filteredCategories,
+              titles: filteredTitles,
+              items: filteredItems,
               getItemId: (item) => item.id,
               type: TransactionType.expense,
               getAmount: (expense) => expense.amount,
               getTitleId: (expense) => expense.titleId,
               onTitleTap: _onTitleTap,
               onBookmarkTap: _onBookmarkTap,
+              searchQuery: _searchQuery, // Pass search query for filtering UI
             );
           },
         ),
@@ -652,47 +839,48 @@ class _ExpenseScreenState extends State<ExpenseScreen>
     );
   }
 
-  void _logExpenseDebugInfo(ExpenseViewModel expenseVM) {
-    debugPrint("\n========================================");
-    debugPrint("📊 EXPENSE UI DEBUG");
-    debugPrint("1. Is Loading: ${expenseVM.isLoading}");
-    debugPrint("2. Total Expenses in ViewModel: ${expenseVM.expenses.length}");
-
-    if (expenseVM.expenses.isNotEmpty) {
-      final first = expenseVM.expenses.first;
-      debugPrint(
-        "3. First Item Sample: ID=${first.id}, Amount=${first.amount}, Date=${first.date}",
-      );
-    } else {
-      debugPrint("3. Expenses List is EMPTY ❌");
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // Section 1: Header + Charts
-            SliverMainAxisGroup(
-              slivers: [_buildHeader(context), _buildChartSection(context)],
-            ),
-
-            // Section 2: Categories
-            SliverMainAxisGroup(
-              slivers: [
-                _buildCategoriesHeader(context),
-                _buildCategoriesList(),
-                const SliverPadding(
-                  padding: EdgeInsets.only(bottom: AppPadding.xl),
+    // Wrap in GestureDetector to hide keyboard on tap outside
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        body: SafeArea(
+          child: CustomScrollView(
+            // Dismiss keyboard on scroll for better UX
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            slivers: [
+              // Section 1: Header + Charts
+              // NEW: Hide this section when search is expanded
+              if (!_isSearchExpanded)
+                SliverMainAxisGroup(
+                  slivers: [_buildHeader(context), _buildChartSection(context)],
                 ),
-              ],
-            ),
-          ],
+
+              // Section 2: Categories (always visible)
+              SliverMainAxisGroup(
+                slivers: [
+                  _buildCategoriesHeader(context),
+                  _buildCategoriesList(),
+                  const SliverPadding(
+                    padding: EdgeInsets.only(bottom: 80),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        // FAB added for multiple actions
+        floatingActionButton: FloatingActionButton(
+          onPressed: _onFabPressed, // Calls the Bottom Sheet menu
+          backgroundColor: Theme.of(context).colorScheme.tertiary, // Use tertiary color for expense
+          foregroundColor: Theme.of(context).colorScheme.onTertiary,
+          child: const Icon(Icons.add),
         ),
       ),
     );
@@ -713,10 +901,10 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
+      BuildContext context,
+      double shrinkOffset,
+      bool overlapsContent,
+      ) {
     return SizedBox.expand(child: child);
   }
 

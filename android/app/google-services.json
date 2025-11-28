@@ -15,46 +15,10 @@
       },
       "oauth_client": [
         {
-          "client_id": "739597429843-q0rp4qe1dm3gu69no2aelela55l7cggi.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDHGJgkSGATFSNr8oX201CxegmBlIP5VKc"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "739597429843-q0rp4qe1dm3gu69no2aelela55l7cggi.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "739597429843-3o9atd8obi4efj47q93e3e9if8svjr3n.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.simplewaytechnology.richUp"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:739597429843:android:6abe5c3702fb6432512aa6",
-        "android_client_info": {
-          "package_name": "com.simplewaytechnology.rich_up"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "739597429843-47os5n2e35a5i7ormckolceebp5giahl.apps.googleusercontent.com",
+          "client_id": "739597429843-6i04lgii3smoa93dhim5aq0p3memsnhj.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.simplewaytechnology.rich_up",
+            "package_name": "com.simplewaytechnology.chashview",
             "certificate_hash": "a27e8205ab786177a2392bba4c2c604e77b2d6af"
           }
         },
@@ -76,10 +40,10 @@
               "client_type": 3
             },
             {
-              "client_id": "739597429843-3o9atd8obi4efj47q93e3e9if8svjr3n.apps.googleusercontent.com",
+              "client_id": "739597429843-28hg99u6gq4adfrd9i6qf8nag249o85p.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.simplewaytechnology.richUp"
+                "bundle_id": "com.simplewaytechnology.chashview"
               }
             }
           ]

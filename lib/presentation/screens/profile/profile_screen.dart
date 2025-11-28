@@ -62,6 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (user == null) return const SizedBox.shrink();
 
         return Scaffold(
+          appBar: AppBar(title: const Text("Profile")),
           backgroundColor: colorScheme.surface, // Use theme surface color
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(20),

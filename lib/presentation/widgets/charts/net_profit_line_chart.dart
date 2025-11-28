@@ -181,19 +181,19 @@ class _NetProfitLineChartState extends State<NetProfitLineChart> {
                       PlotBand(
                         start: 0,
                         end: animatedMax,
-                        color: colorScheme.primaryContainer.withOpacity(0.1),
+                        color: colorScheme.secondaryContainer.withValues(alpha: 0.5),
                       ),
                       // Negative area
                       PlotBand(
                         start: animatedMin,
                         end: 0,
-                        color: colorScheme.errorContainer.withOpacity(0.1),
+                        color: colorScheme.tertiaryContainer.withValues(alpha: 0.5),
                       ),
                       // Zero line
                       PlotBand(
                         start: 0,
                         end: 0,
-                        borderColor: Colors.grey.withOpacity(0.5),
+                        borderColor: Colors.grey.withValues(alpha: 0.5),
                         borderWidth: 1,
                         dashArray: const <double>[4, 4],
                       ),
@@ -239,7 +239,7 @@ class _NetProfitLineChartState extends State<NetProfitLineChart> {
                       // 🔥 SMOOTH DATA POINT TRANSITIONS
                       emptyPointSettings: EmptyPointSettings(
                         mode: EmptyPointMode.zero,
-                        color: Colors.grey.withOpacity(0.3),
+                        color: Colors.grey.withValues(alpha: 0.3),
                       ),
                     ),
                   ],
@@ -290,7 +290,7 @@ class _NetProfitLineChartState extends State<NetProfitLineChart> {
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -78,7 +79,14 @@ Future<void> init() async {
 
   // External
   sl.registerLazySingleton(() => FirebaseAuth.instance);
-  sl.registerLazySingleton(() => GoogleSignIn());
+  //sl.registerLazySingleton(() => GoogleSignIn());
+
+  // 🔥 Register GoogleSignIn with web clientId
+  sl.registerLazySingleton<GoogleSignIn>(() => GoogleSignIn(
+    clientId: kIsWeb
+        ? "739597429843-q0rp4qe1dm3gu69no2aelela55l7cggi.apps.googleusercontent.com"
+        : null,
+  ));
 
   // Data sources
   sl.registerLazySingleton<AuthRemoteDataSource>(
@@ -103,6 +111,8 @@ Future<void> init() async {
       getCurrentUserUseCase: sl(),
     ),
   );
+
+
 
   sl.registerFactory(() => SplashViewModel(getCurrentUserUseCase: sl()));
 
