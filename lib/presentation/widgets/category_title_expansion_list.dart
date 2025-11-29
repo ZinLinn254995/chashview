@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../domain/entities/category_entity.dart';
 import '../../../domain/entities/title_entity.dart';
+import '../viewmodels/cart_viewmodel.dart';
 import '../viewmodels/category_viewmodel.dart';
 import 'category_dialog.dart';
 import 'currency_text.dart';
@@ -133,7 +134,7 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
         // Dynamic Colors based on data presence
         final Color headerBackgroundColor = hasCategoryData
             ? activeContainerColor
-            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3);
+            : colorScheme.surfaceContainerLow.withValues(alpha: 0.3);
 
         final Color headerContentColor = hasCategoryData
             ? activeContentColor
@@ -249,7 +250,7 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             margin: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16), // Rounded corners
+              borderRadius: BorderRadius.circular(12), // Rounded corners
               side: BorderSide(
                 color: hasCategoryData
                     ? colorScheme.outlineVariant.withValues(alpha: 0.5)
@@ -435,22 +436,68 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
                         ),
 
                         // ✅ 4. Bookmark as Leading Action
-                        leading: IconButton(
-                          icon: Icon(
-                            title.bookmark
-                                ? Icons.bookmark
-                                : Icons.bookmark_border_rounded,
-                            color: title.bookmark
-                                ? primaryTextColor
-                                : colorScheme.outline,
-                            size: 22,
-                          ),
-                          onPressed: () => onBookmarkTap(category.id, title),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          style: const ButtonStyle(
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
+                        // category_title_expansion_list.dart - fixed version
+                        leading: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // ✅ Bookmark Icon
+                            IconButton(
+                              icon: Icon(
+                                title.bookmark
+                                    ? Icons.bookmark
+                                    : Icons.bookmark_border_rounded,
+                                color: title.bookmark
+                                    ? primaryTextColor
+                                    : colorScheme.outline,
+                                size: 20,
+                              ),
+                              onPressed: () => onBookmarkTap(category.id, title),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              style: const ButtonStyle(
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ),
+
+                            AppGap.sm,
+
+                            // ✅ Add to Cart Icon - Expense Type အတွက်ပဲပြမယ်
+                            if (type == TransactionType.expense) // 🔥 Only show for expense
+                              Consumer<CartViewModel>(
+                                builder: (context, cartVM, child) {
+                                  final isInCart = cartVM.isInCart(title.id);
+                                  return IconButton(
+                                    icon: Icon(
+                                      isInCart ? Icons.shopping_cart : Icons.shopping_cart_outlined,
+                                      color: isInCart ? Colors.orange : colorScheme.outline,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      // 🔥 Fix: Only pass title, no category name needed
+                                      cartVM.toggleCart(title);
+
+                                      // Optional: Show snackbar feedback
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          backgroundColor: Colors.orange,
+                                          content: Text(
+                                            isInCart
+                                                ? "Removed from cart"
+                                                : "Added to cart",
+                                          ),
+                                          duration: Duration(seconds: 1),
+                                        ),
+                                      );
+                                    },
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    style: const ButtonStyle(
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  );
+                                },
+                              ),
+                          ],
                         ),
 
                         title: Text(

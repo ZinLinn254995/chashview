@@ -1,5 +1,6 @@
 import 'package:chashview/presentation/viewmodels/auth_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/budget_viewmodel.dart';
+import 'package:chashview/presentation/viewmodels/cart_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/category_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/currency_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/expense_viewmodel.dart';
@@ -48,6 +49,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => di.sl<BudgetViewModel>()),
         ChangeNotifierProvider(create: (_) => di.sl<TargetViewModel>()),
         ChangeNotifierProvider(create: (_) => di.sl<SummaryViewModel>()),
+        ChangeNotifierProvider(create: (_) => CartViewModel()),
       ],
       child: MaterialApp(
         title: 'Cash View',

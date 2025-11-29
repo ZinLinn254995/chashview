@@ -20,7 +20,6 @@ import '../../widgets/charts/period_comparison_pie_chart.dart';
 import '../../widgets/chart_legend.dart';
 import '../../widgets/date_range_picker.dart';
 import '../../widgets/time_range_tab.dart';
-import '../category/category_screen.dart'; // Ensure this is imported if needed for _onCategoriesPressed
 import 'expense_by_title_screen.dart';
 
 class ExpenseScreen extends StatefulWidget {
@@ -135,15 +134,6 @@ class _ExpenseScreenState extends State<ExpenseScreen>
     Navigator.pushNamed(context, RouteNames.settings);
   }
 
-  void _onCategoriesPressed() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const CategoryScreen(),
-        settings: const RouteSettings(arguments: {"type": "expense"}),
-      ),
-    );
-  }
 
   void _onAddCategoryPressed() {
     showDialog(
@@ -572,7 +562,7 @@ class _ExpenseScreenState extends State<ExpenseScreen>
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(16),
       ),
       clipBehavior: Clip.hardEdge,
       child: Column(
@@ -713,8 +703,7 @@ class _ExpenseScreenState extends State<ExpenseScreen>
                   children: [
                     // Left: Label + Navigation
                     Expanded(
-                      child: GestureDetector(
-                        onTap: _onCategoriesPressed, // Navigate to category screen
+                      child: GestureDetector(// Navigate to category screen
                         behavior: HitTestBehavior.opaque,
                         child: Row(
                           children: [

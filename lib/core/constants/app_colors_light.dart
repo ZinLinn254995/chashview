@@ -6,7 +6,7 @@ class AppColorsLight {
   // PRIMARY - Professional Blue (ယုံကြည်ရမှု၊ စိတ်ချရမှု)
   static const Color primary = Color(0xFF0063B2);
   static const Color onPrimary = Color(0xFFFFFFFF);
-  static const Color primaryContainer = Color(0xFFDBEAFE);
+  static const Color primaryContainer = Color(0xFFE9F5FF);
   static const Color onPrimaryContainer = Color(0xFF1E40AF);
 
   // SECONDARY - Success Green (ဝင်ငွေ၊ စုဆောင်းမှု)

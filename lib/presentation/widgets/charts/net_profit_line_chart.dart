@@ -10,11 +10,13 @@ import '../time_range_tab.dart';
 class NetProfitLineChart extends StatefulWidget {
   final List<DailySummaryData> data;
   final TimeRangeTab activeTab;
+  final bool enableZoom;
 
   const NetProfitLineChart({
     super.key,
     required this.data,
     required this.activeTab,
+    this.enableZoom = false,
   });
 
   @override
@@ -22,13 +24,19 @@ class NetProfitLineChart extends StatefulWidget {
 }
 
 class _NetProfitLineChartState extends State<NetProfitLineChart> {
-  // 🔥 AXIS LOCKING VARIABLES
-  double _prevMax = 100;
-  double _prevMin = -100;
-  double _prevInterval = 50;
+  late ZoomPanBehavior _zoomPanBehavior;
 
-  // Track previous tab to detect changes
-  TimeRangeTab? _previousTab;
+  @override
+  void initState() {
+    super.initState();
+    // (1) Zoom ပိတ်ပြီး Scroll (Pan) ပဲဖွင့်ထားခြင်း
+    _zoomPanBehavior = ZoomPanBehavior(
+      enablePanning: true,
+      enablePinching: false,
+      enableDoubleTapZooming: false,
+      zoomMode: ZoomMode.x,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +46,7 @@ class _NetProfitLineChartState extends State<NetProfitLineChart> {
     final validData = widget.data.toList();
     validData.sort((a, b) => a.date.compareTo(b.date));
 
-    // 1. Line Color Logic (Last Value)
+    // Line Color Logic
     Color lineColor = colorScheme.primary;
     if (validData.isNotEmpty) {
       final lastData = validData.last;
@@ -50,206 +58,163 @@ class _NetProfitLineChartState extends State<NetProfitLineChart> {
       }
     }
 
-    // 2. Calculate current min/max from data
-    double currentMax = 0;
-    double currentMin = 0;
+    // (2) Initial Visible Range (Last 7 periods)
+    DateTime? initialVisibleMin;
+    DateTime? initialVisibleMax;
     if (validData.isNotEmpty) {
-      for (var item in validData) {
-        final netProfit = item.income - item.expense;
-        currentMax = max(currentMax, netProfit);
-        currentMin = min(currentMin, netProfit);
+      final dataLength = validData.length;
+      int periodsToShow = 7;
+
+      if (dataLength <= periodsToShow) {
+        initialVisibleMin = validData.first.date;
+        initialVisibleMax = validData.last.date;
+      } else {
+        initialVisibleMin = validData[dataLength - periodsToShow].date;
+        initialVisibleMax = validData.last.date;
       }
-    }
 
-    // 🔥 3. SMART AXIS RANGE CALCULATION WITH TAB CHANGE DETECTION
-    bool isTabChanging = _previousTab != widget.activeTab;
-    _previousTab = widget.activeTab;
-
-    double targetMax, targetMin, targetInterval;
-
-    if (validData.isEmpty || (currentMax == 0 && currentMin == 0)) {
-      // No data or all zeros - use previous values to prevent jumping
-      targetMax = _prevMax;
-      targetMin = _prevMin;
-      targetInterval = _prevInterval;
-    } else {
-      // Calculate new target values
-      double rawTargetMax = currentMax > 0 ? currentMax * 1.2 : 10;
-      double rawTargetMin = currentMin < 0 ? currentMin * 1.2 : -10;
-
-      // Calculate nice interval
-      double range = rawTargetMax - rawTargetMin;
-      double roughInterval = range / 4;
-
-      double magnitude = pow(10, (log(roughInterval) / ln10).floor()).toDouble();
-      double niceInterval = (roughInterval / magnitude).round() * magnitude;
-      if (niceInterval == 0) niceInterval = magnitude;
-
-      // Adjust min/max to align with interval
-      targetMax = (rawTargetMax / niceInterval).ceil() * niceInterval;
-      targetMin = (rawTargetMin / niceInterval).floor() * niceInterval;
-      targetInterval = niceInterval;
-
-      // Update stored values for next build
-      if (!isTabChanging) {
-        _prevMax = targetMax;
-        _prevMin = targetMin;
-        _prevInterval = targetInterval;
+      // Adjust slightly for end of day/month logic
+      if (widget.activeTab == TimeRangeTab.daily) {
+        initialVisibleMax = DateTime(initialVisibleMax.year, initialVisibleMax.month, initialVisibleMax.day, 23, 59, 59);
       }
     }
 
     // Date Format
-    DateFormat dateFormat;
-    switch (widget.activeTab) {
-      case TimeRangeTab.daily:
-        dateFormat = DateFormat('dd-MMM');
-        break;
-      case TimeRangeTab.monthly:
-        dateFormat = DateFormat('MMM-yyyy');
-        break;
-      case TimeRangeTab.yearly:
-        dateFormat = DateFormat('yyyy');
-        break;
-      default:
-        dateFormat = DateFormat('dd-MMM');
-    }
+    DateFormat dateFormat = _getDateFormat(widget.activeTab, validData);
 
-    // 🔥 SMOOTH ANIMATION WITH TWEEN BUILDER
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(
-          begin: isTabChanging ? _prevMin : _prevMin,
-          end: targetMin
+    return SfCartesianChart(
+      plotAreaBorderWidth: 0,
+      zoomPanBehavior: _zoomPanBehavior,
+      primaryXAxis: DateTimeAxis(
+        dateFormat: dateFormat,
+        intervalType: _getIntervalType(widget.activeTab, validData),
+        interval: _getIntervalValue(widget.activeTab, validData),
+        majorGridLines: const MajorGridLines(width: 0),
+        axisLine: const AxisLine(width: 0),
+        labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+
+        // Setting the visible range
+        initialVisibleMinimum: initialVisibleMin,
+        initialVisibleMaximum: initialVisibleMax,
+
+        plotOffsetEnd: 20,
+        plotOffsetStart: 20,
       ),
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.easeOutCubic,
-      builder: (context, animatedMin, child) {
-        return TweenAnimationBuilder<double>(
-          tween: Tween<double>(
-              begin: isTabChanging ? _prevMax : _prevMax,
-              end: targetMax
+      primaryYAxis: NumericAxis(
+        axisLine: const AxisLine(width: 0),
+        opposedPosition: true,
+        majorTickLines: const MajorTickLines(size: 0),
+
+        // (3) Auto Adjust Y-Axis based on visible data
+        anchorRangeToVisiblePoints: true,
+
+        numberFormat: NumberFormat.compactCurrency(
+            symbol: currencySymbol,
+            decimalDigits: 0
+        ),
+        labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+
+        // Plot Bands for Positive/Negative areas
+        // Using large numbers to ensure they cover the dynamic range
+        plotBands: <PlotBand>[
+          // Positive area (0 to Infinity)
+          PlotBand(
+            start: 0,
+            end: 1000000000, // Very large number
+            color: colorScheme.secondaryContainer.withOpacity(0.5),
           ),
-          duration: const Duration(milliseconds: 800),
-          curve: Curves.easeOutCubic,
-          builder: (context, animatedMax, child) {
-            return TweenAnimationBuilder<double>(
-              tween: Tween<double>(
-                  begin: isTabChanging ? _prevInterval : _prevInterval,
-                  end: targetInterval
-              ),
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.easeOutCubic,
-              builder: (context, animatedInterval, child) {
-                return SfCartesianChart(
-                  plotAreaBorderWidth: 0,
-                  primaryXAxis: DateTimeAxis(
-                    dateFormat: dateFormat,
-                    intervalType: _getIntervalType(widget.activeTab),
-                    interval: 1,
-                    majorGridLines: const MajorGridLines(width: 0),
-                    axisLine: const AxisLine(width: 0),
-                    labelStyle: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500
-                    ),
-                    minimum: validData.isNotEmpty ? validData.first.date : null,
-                    maximum: validData.isNotEmpty ? validData.last.date : null,
-                    plotOffsetEnd: 20,
-                    plotOffsetStart: 20,
-                  ),
-                  primaryYAxis: NumericAxis(
-                    axisLine: const AxisLine(width: 0),
-                    opposedPosition: true,
-                    majorTickLines: const MajorTickLines(size: 0),
-
-                    // 🔥 ANIMATED AXIS RANGE AND INTERVAL
-                    minimum: animatedMin,
-                    maximum: animatedMax,
-                    interval: animatedInterval,
-
-                    numberFormat: NumberFormat.compactCurrency(
-                        symbol: currencySymbol,
-                        decimalDigits: 0
-                    ),
-                    labelStyle: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500
-                    ),
-
-                    // 🔥 ZERO LINE AND BACKGROUND COLORS
-                    plotBands: <PlotBand>[
-                      // Positive area
-                      PlotBand(
-                        start: 0,
-                        end: animatedMax,
-                        color: colorScheme.secondaryContainer.withValues(alpha: 0.5),
-                      ),
-                      // Negative area
-                      PlotBand(
-                        start: animatedMin,
-                        end: 0,
-                        color: colorScheme.tertiaryContainer.withValues(alpha: 0.5),
-                      ),
-                      // Zero line
-                      PlotBand(
-                        start: 0,
-                        end: 0,
-                        borderColor: Colors.grey.withValues(alpha: 0.5),
-                        borderWidth: 1,
-                        dashArray: const <double>[4, 4],
-                      ),
-                    ],
-                  ),
-                  tooltipBehavior: TooltipBehavior(
-                    enable: true,
-                    color: Theme.of(context).colorScheme.surface,
-                    textStyle: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    borderColor: Theme.of(context).colorScheme.outlineVariant,
-                    borderWidth: 1,
-                    animationDuration: 150,
-                    canShowMarker: true,
-                    elevation: 3,
-                    builder: (dynamic data, dynamic point, dynamic series, int pointIndex, int seriesIndex) {
-                      return _buildTooltip(
-                          context,
-                          validData,
-                          pointIndex,
-                          colorScheme,
-                          currencySymbol
-                      );
-                    },
-                  ),
-                  series: <CartesianSeries>[
-                    LineSeries<DailySummaryData, DateTime>(
-                      name: 'Net Profit',
-                      dataSource: validData,
-                      xValueMapper: (DailySummaryData sales, _) => sales.date,
-                      yValueMapper: (DailySummaryData sales, _) => sales.income - sales.expense,
-                      color: lineColor,
-                      width: 2,
-                      animationDuration: 800, // Sync with axis animation
-                      markerSettings: const MarkerSettings(
-                          isVisible: true,
-                          width: 4,
-                          height: 4
-                      ),
-                      // 🔥 SMOOTH DATA POINT TRANSITIONS
-                      emptyPointSettings: EmptyPointSettings(
-                        mode: EmptyPointMode.zero,
-                        color: Colors.grey.withValues(alpha: 0.3),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
-        );
-      },
+          // Negative area (-Infinity to 0)
+          PlotBand(
+            start: -1000000000, // Very small number
+            end: 0,
+            color: colorScheme.tertiaryContainer.withOpacity(0.5),
+          ),
+          // Zero line
+          PlotBand(
+            start: 0,
+            end: 0,
+            borderColor: Colors.grey.withOpacity(0.5),
+            borderWidth: 1,
+            dashArray: const <double>[4, 4],
+          ),
+        ],
+      ),
+      tooltipBehavior: TooltipBehavior(
+        enable: true,
+        color: Theme.of(context).colorScheme.surface,
+        textStyle: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+        borderColor: Theme.of(context).colorScheme.outlineVariant,
+        borderWidth: 1,
+        animationDuration: 150,
+        canShowMarker: true,
+        elevation: 3,
+        builder: (dynamic data, dynamic point, dynamic series, int pointIndex, int seriesIndex) {
+          return _buildTooltip(context, validData, pointIndex, colorScheme, currencySymbol);
+        },
+      ),
+      series: <CartesianSeries>[
+        LineSeries<DailySummaryData, DateTime>(
+          name: 'Net Profit',
+          dataSource: validData,
+          xValueMapper: (DailySummaryData sales, _) => sales.date,
+          yValueMapper: (DailySummaryData sales, _) => sales.income - sales.expense,
+          color: lineColor,
+          width: 2,
+          animationDuration: 800,
+          markerSettings: const MarkerSettings(isVisible: true, width: 4, height: 4),
+          emptyPointSettings: EmptyPointSettings(
+            mode: EmptyPointMode.zero,
+            color: Colors.grey.withOpacity(0.3),
+          ),
+        ),
+      ],
     );
+  }
+
+  // ... (Keep existing Helper Functions: _getIntervalType, _getIntervalValue, _getDateFormat, _buildTooltip)
+  // Re-pasting helper functions for completeness if needed, but assuming they are same as your original code.
+
+  DateTimeIntervalType _getIntervalType(TimeRangeTab tab, List<DailySummaryData> data) {
+    if (tab == TimeRangeTab.allTime && data.isNotEmpty) {
+      final span = data.last.date.difference(data.first.date);
+      if (span.inDays > 1825) return DateTimeIntervalType.years;
+      if (span.inDays > 365) return DateTimeIntervalType.months;
+      return DateTimeIntervalType.days;
+    }
+    switch (tab) {
+      case TimeRangeTab.daily: return DateTimeIntervalType.days;
+      case TimeRangeTab.monthly: return DateTimeIntervalType.months;
+      case TimeRangeTab.yearly: return DateTimeIntervalType.years;
+      default: return DateTimeIntervalType.days;
+    }
+  }
+
+  double? _getIntervalValue(TimeRangeTab tab, List<DailySummaryData> data) {
+    if (tab == TimeRangeTab.allTime && data.isNotEmpty) {
+      final totalDays = data.last.date.difference(data.first.date).inDays;
+      if (totalDays > 90 && totalDays <= 365) return 7;
+      return 1;
+    }
+    return 1;
+  }
+
+  DateFormat _getDateFormat(TimeRangeTab tab, List<DailySummaryData> data) {
+    if (tab == TimeRangeTab.allTime && data.isNotEmpty) {
+      final totalDays = data.last.date.difference(data.first.date).inDays;
+      if (totalDays > 365 * 5) return DateFormat('yyyy');
+      if (totalDays > 365) return DateFormat('MMM-yyyy');
+      return DateFormat('dd-MMM-yy');
+    }
+    switch (tab) {
+      case TimeRangeTab.daily: return DateFormat('dd-MMM');
+      case TimeRangeTab.monthly: return DateFormat('MMM-yyyy');
+      case TimeRangeTab.yearly: return DateFormat('yyyy');
+      default: return DateFormat('dd-MMM');
+    }
   }
 
   Widget _buildTooltip(
@@ -264,8 +229,9 @@ class _NetProfitLineChartState extends State<NetProfitLineChart> {
         : DailySummaryData(date: DateTime.now(), income: 0, expense: 0);
 
     final netProfit = dailyData.income - dailyData.expense;
-
     String periodText;
+    DateFormat dateFormat = _getDateFormat(widget.activeTab, validData);
+
     switch (widget.activeTab) {
       case TimeRangeTab.daily:
         periodText = DateFormat('EEEE, MMM d, yyyy').format(dailyData.date);
@@ -275,6 +241,9 @@ class _NetProfitLineChartState extends State<NetProfitLineChart> {
         break;
       case TimeRangeTab.yearly:
         periodText = DateFormat('yyyy').format(dailyData.date);
+        break;
+      case TimeRangeTab.allTime:
+        periodText = dateFormat.format(dailyData.date);
         break;
       default:
         periodText = DateFormat('MMM d, yyyy').format(dailyData.date);
@@ -290,7 +259,7 @@ class _NetProfitLineChartState extends State<NetProfitLineChart> {
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -312,42 +281,15 @@ class _NetProfitLineChartState extends State<NetProfitLineChart> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Text('Net Profit: ', style: TextStyle(color: Colors.grey[700], fontSize: 11, fontWeight: FontWeight.bold)),
               Text(
-                'Net Profit: ',
-                style: TextStyle(
-                  color: Colors.grey[700],
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                NumberFormat.compactCurrency(
-                    symbol: currencySymbol,
-                    decimalDigits: 0
-                ).format(netProfit),
-                style: TextStyle(
-                  color: valueColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
+                NumberFormat.compactCurrency(symbol: currencySymbol, decimalDigits: 0).format(netProfit),
+                style: TextStyle(color: valueColor, fontSize: 11, fontWeight: FontWeight.bold),
               ),
             ],
           ),
         ],
       ),
     );
-  }
-
-  DateTimeIntervalType _getIntervalType(TimeRangeTab tab) {
-    switch (tab) {
-      case TimeRangeTab.daily:
-        return DateTimeIntervalType.days;
-      case TimeRangeTab.monthly:
-        return DateTimeIntervalType.months;
-      case TimeRangeTab.yearly:
-        return DateTimeIntervalType.years;
-      default:
-        return DateTimeIntervalType.days;
-    }
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:io'; // For exit(0)
+import 'package:chashview/presentation/screens/summary/summary_screen.dart';
 import 'package:flutter/material.dart';
 
 import 'widgets/bottom_nav_bar.dart';
@@ -25,6 +26,7 @@ class _MainAppContentState extends State<MainAppContent> {
     IncomeScreen(), // Index 1
     ExpenseScreen(), // Index 2
     ChartScreen(), // Index 3
+    SummaryScreen(),
     ProfileScreen(), // Index 4
   ];
 

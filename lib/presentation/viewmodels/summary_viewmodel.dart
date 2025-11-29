@@ -6,7 +6,6 @@ import '../../domain/usecases/summary/calculate_net_usecase.dart';
 import '../../domain/usecases/summary/calculate_total_expense_usecase.dart';
 import '../../domain/usecases/summary/calculate_total_income_usecase.dart';
 import '../viewmodels/auth_viewmodel.dart';
-// Note: TimeRangeTab enum should be accessible here (as imported from '../widgets/time_range_tab.dart' in the context)
 import '../widgets/time_range_tab.dart';
 
 enum SummaryTimeRange { daily, monthly, yearly, allTime }
@@ -23,7 +22,6 @@ class SummaryData {
   });
 }
 
-// ✅ Class for Chart Data (Represents data for a Day, Month, or Year period)
 class DailySummaryData {
   final DateTime date;
   final double income;
@@ -44,13 +42,13 @@ class SummaryViewModel extends ChangeNotifier {
 
   bool isLoading = false;
 
-  // Cache for standard summary cards (Daily, Monthly, etc.)
+  // Cache for standard summary cards
   final Map<SummaryTimeRange, SummaryData> _cache = {};
   final Map<SummaryTimeRange, StreamSubscription<double>> _incomeSubs = {};
   final Map<SummaryTimeRange, StreamSubscription<double>> _expenseSubs = {};
   final Map<SummaryTimeRange, StreamSubscription<double>> _netSubs = {};
 
-  // ✅ Chart Data Property (Updated Name: chartData)
+  // Chart Data Properties
   List<DailySummaryData> chartData = [];
   final List<StreamSubscription> _chartSubscriptions = [];
 
@@ -74,14 +72,11 @@ class SummaryViewModel extends ChangeNotifier {
     _chartSubscriptions.clear();
 
     _cache.clear();
-    chartData.clear(); // Clear chart data on user change
+    chartData.clear();
 
     notifyListeners();
   }
 
-  /*// ---------------------------------------------------------------------------
-  // ✅ REAL-TIME CHART SUBSCRIPTION LOGIC (Daily, Monthly, Yearly)
-  // ---------------------------------------------------------------------------
   void subscribeChartData(TimeRangeTab tab) {
     final userId = authViewModel.user?.uid;
     if (userId == null) return;
@@ -92,46 +87,18 @@ class SummaryViewModel extends ChangeNotifier {
     }
     _chartSubscriptions.clear();
 
-    final now = DateTime.now();
-    List<DailySummaryData> tempList = [];
-    int loopCount = 0;
+    // 2. Get all available periods for the selected tab
+    final periods = _getAllPeriodsForTab(tab, userId);
 
-    // 2. Define Loop Count & Initial Data based on Tab
-    switch (tab) {
-      case TimeRangeTab.daily:
-        loopCount = 7; // Last 7 days
-        break;
-      case TimeRangeTab.monthly:
-        loopCount = 6; // Last 6 months
-        break;
-      case TimeRangeTab.yearly:
-        loopCount = 3; // Last 3 years
-        break;
-      case TimeRangeTab.allTime: // Do nothing or return if 'All Time' is selected
-        return;
-    }
+    // 3. Initialize chart data with all periods
+    chartData = periods.map((date) =>
+        DailySummaryData(date: date, income: 0, expense: 0)
+    ).toList();
 
-    // Prepare empty slots (Oldest -> Newest)
-    for (int i = loopCount - 1; i >= 0; i--) {
-      DateTime date;
-      if (tab == TimeRangeTab.daily) {
-        // Last 7 days: Today - i days
-        date = now.subtract(Duration(days: i));
-      } else if (tab == TimeRangeTab.monthly) {
-        // Last 6 months: Today - i months (Dart handles year rollover automatically)
-        date = DateTime(now.year, now.month - i, 1);
-      } else {
-        // Last 3 years: Today - i years
-        date = DateTime(now.year - i, 1, 1);
-      }
-      tempList.add(DailySummaryData(date: date, income: 0, expense: 0));
-    }
-
-    chartData = tempList; // Update the list
     notifyListeners();
 
-    // 3. Create Streams for each period (Day/Month/Year)
-    for (int i = 0; i < loopCount; i++) {
+    // 4. Subscribe to realtime updates for each period
+    for (int i = 0; i < chartData.length; i++) {
       final displayDate = chartData[i].date;
       DateTime start, end;
 
@@ -141,7 +108,6 @@ class SummaryViewModel extends ChangeNotifier {
         end = DateTime(displayDate.year, displayDate.month, displayDate.day, 23, 59, 59, 999);
       } else if (tab == TimeRangeTab.monthly) {
         start = DateTime(displayDate.year, displayDate.month, 1);
-        // Last day of the month (month + 1, day 0)
         end = DateTime(displayDate.year, displayDate.month + 1, 0, 23, 59, 59, 999);
       } else {
         // Yearly
@@ -162,87 +128,50 @@ class SummaryViewModel extends ChangeNotifier {
       _chartSubscriptions.add(incomeSub);
       _chartSubscriptions.add(expenseSub);
     }
-  }*/
+  }
 
-  void subscribeChartData(TimeRangeTab tab) {
-    final userId = authViewModel.user?.uid;
-    if (userId == null) return;
-
-    // 1. Clear old subscriptions
-    for (var sub in _chartSubscriptions) {
-      sub.cancel();
-    }
-    _chartSubscriptions.clear();
+  // Helper method to get all periods for a tab
+  List<DateTime> _getAllPeriodsForTab(TimeRangeTab tab, String userId) {
+    // This should be implemented based on your data source
+    // For now, I'll provide a placeholder implementation
+    // You'll need to replace this with actual data fetching from your database
 
     final now = DateTime.now();
-    List<DailySummaryData> tempList = [];
-    int loopCount = 0;
+    final List<DateTime> periods = [];
 
-    // 2. Define Loop Count & Initial Data based on Tab
     switch (tab) {
       case TimeRangeTab.daily:
-        loopCount = 7; // Last 7 days
+      // Get all days that have transactions
+      // This is a placeholder - replace with actual data fetching
+        for (int i = 0; i < 30; i++) { // Example: last 30 days with data
+          periods.add(DateTime(now.year, now.month, now.day - i));
+        }
         break;
+
       case TimeRangeTab.monthly:
-        loopCount = 6; // Last 6 months
+      // Get all months that have transactions
+      // This is a placeholder - replace with actual data fetching
+        for (int i = 0; i < 12; i++) { // Example: last 12 months with data
+          periods.add(DateTime(now.year, now.month - i, 1));
+        }
         break;
+
       case TimeRangeTab.yearly:
-        loopCount = 6; // Last 3 years
+      // Get all years that have transactions
+      // This is a placeholder - replace with actual data fetching
+        for (int i = 0; i < 5; i++) { // Example: last 5 years with data
+          periods.add(DateTime(now.year - i, 1, 1));
+        }
         break;
+
       case TimeRangeTab.allTime:
-        return;
+      // You might want to handle this differently
+        break;
     }
 
-    // Prepare empty slots (Oldest -> Newest)
-    for (int i = loopCount - 1; i >= 0; i--) {
-      DateTime date;
-      if (tab == TimeRangeTab.daily) {
-        // Last 7 days: Today - i days
-        date = DateTime(now.year, now.month, now.day - i);
-      } else if (tab == TimeRangeTab.monthly) {
-        // Last 6 months: Today - i months
-        date = DateTime(now.year, now.month - i, 1);
-      } else {
-        // Last 3 years: Today - i years
-        date = DateTime(now.year - i, 1, 1);
-      }
-      tempList.add(DailySummaryData(date: date, income: 0, expense: 0));
-    }
-
-    chartData = tempList;
-    notifyListeners();
-
-    // 3. Create Streams for each period (Day/Month/Year)
-    for (int i = 0; i < loopCount; i++) {
-      final displayDate = chartData[i].date;
-      DateTime start, end;
-
-      // Calculate Start/End based on Tab - FIXED
-      if (tab == TimeRangeTab.daily) {
-        start = DateTime(displayDate.year, displayDate.month, displayDate.day);
-        end = DateTime(displayDate.year, displayDate.month, displayDate.day, 23, 59, 59, 999);
-      } else if (tab == TimeRangeTab.monthly) {
-        start = DateTime(displayDate.year, displayDate.month, 1);
-        end = DateTime(displayDate.year, displayDate.month + 1, 0, 23, 59, 59, 999);
-      } else {
-        // Yearly
-        start = DateTime(displayDate.year, 1, 1);
-        end = DateTime(displayDate.year, 12, 31, 23, 59, 59, 999);
-      }
-
-      // Listen Income
-      final incomeSub = totalIncomeUseCase
-          .callRealtime(userId, start, end)
-          .listen((income) => _updateChartData(i, income: income));
-
-      // Listen Expense
-      final expenseSub = totalExpenseUseCase
-          .callRealtime(userId, start, end)
-          .listen((expense) => _updateChartData(i, expense: expense));
-
-      _chartSubscriptions.add(incomeSub);
-      _chartSubscriptions.add(expenseSub);
-    }
+    // Sort chronologically
+    periods.sort();
+    return periods;
   }
 
   // Helper to update specific period in the list and refresh UI
@@ -254,14 +183,13 @@ class SummaryViewModel extends ChangeNotifier {
       income: income ?? oldData.income,
       expense: expense ?? oldData.expense,
     );
-    notifyListeners(); // Trigger UI update
+    notifyListeners();
   }
 
   // ---------------------------------------------------------------------------
-  // EXISTING LOGIC (For Summary Cards)
+  // EXISTING METHODS (unchanged)
   // ---------------------------------------------------------------------------
 
-  /// 🔥 Realtime subscription for a time range
   void subscribe(SummaryTimeRange range) {
     final userId = authViewModel.user?.uid;
     if (userId == null) return;
@@ -342,7 +270,6 @@ class SummaryViewModel extends ChangeNotifier {
     });
   }
 
-  // Custom range subscribe
   void subscribeWithRange(
       SummaryTimeRange range,
       DateTime? start,
@@ -391,7 +318,6 @@ class SummaryViewModel extends ChangeNotifier {
     });
   }
 
-  /// ⭐ One-time fetch fallback (Legacy method, kept for compatibility)
   Future<void> loadSummary(SummaryTimeRange range) async {
     final userId = authViewModel.user?.uid;
     if (userId == null) return;
@@ -486,7 +412,6 @@ class SummaryViewModel extends ChangeNotifier {
   void dispose() {
     _clearSubscriptions();
 
-    // Clear chart subscriptions
     for (var sub in _chartSubscriptions) {
       sub.cancel();
     }

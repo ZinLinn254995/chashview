@@ -1,11 +1,11 @@
-import 'dart:math';
-import 'package:chashview/presentation/widgets/time_range_tab.dart';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart'; // ✅ 1. Provider import လုပ်ပါ
+import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import '../../viewmodels/summary_viewmodel.dart';
-import '../../viewmodels/currency_viewmodel.dart'; // ✅ ViewModel import လုပ်ပါ
+import '../../viewmodels/currency_viewmodel.dart';
+import '../time_range_tab.dart';
 
 class ComparisonChart extends StatefulWidget {
   final List<DailySummaryData> data;
@@ -22,35 +22,28 @@ class ComparisonChart extends StatefulWidget {
 }
 
 class _ComparisonChartState extends State<ComparisonChart> {
-  double _prevMax = 1000;
+  late ZoomPanBehavior _zoomPanBehavior;
+
+  @override
+  void initState() {
+    super.initState();
+    // (1) Zoom ကိုပိတ်ပြီး Pan (ပွတ်ဆွဲခြင်း) ကိုပဲ ဖွင့်ထားခြင်း
+    _zoomPanBehavior = ZoomPanBehavior(
+      enablePanning: true,       // ပွတ်ဆွဲလို့ရမယ်
+      enablePinching: false,     // လက်နှစ်ချောင်းနဲ့ ချဲ့မရအောင် ပိတ်မယ်
+      enableDoubleTapZooming: false,
+      enableSelectionZooming: false,
+      zoomMode: ZoomMode.x,      // X ဝင်ရိုး (ဘယ်/ညာ) ပဲ ရွေ့လို့ရမယ်
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
-    // ✅ 2. User ရွေးထားတဲ့ Currency Symbol ကို ယူမယ် (Rebuild ဖြစ်အောင် watch သုံးပါတယ်)
     final currencySymbol = context.watch<CurrencyViewModel>().selectedCurrency;
 
     final validData = widget.data.toList();
     validData.sort((a, b) => a.date.compareTo(b.date));
-
-    // ---------------------------------------------------------
-    // SMOOTH AXIS LOGIC
-    // ---------------------------------------------------------
-    double currentMax = 0;
-    if (validData.isNotEmpty) {
-      for (var item in validData) {
-        currentMax = max(currentMax, max(item.income, item.expense));
-      }
-    }
-
-    double targetMax = currentMax > 0 ? currentMax : _prevMax;
-    targetMax = targetMax * 1.2;
-
-    if (currentMax > 0) {
-      _prevMax = currentMax;
-    }
-    // ---------------------------------------------------------
 
     DateFormat dateFormat;
     switch (widget.activeTab) {
@@ -67,90 +60,124 @@ class _ComparisonChartState extends State<ComparisonChart> {
         dateFormat = DateFormat('dd-MMM');
     }
 
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: _prevMax, end: targetMax),
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.easeOutCubic,
-      builder: (context, animatedMax, child) {
-        return SfCartesianChart(
-          plotAreaBorderWidth: 0,
-          legend: Legend(
-              isVisible: true,
-              position: LegendPosition.bottom,
-              overflowMode: LegendItemOverflowMode.wrap
-          ),
-          primaryXAxis: DateTimeAxis(
-            dateFormat: dateFormat,
-            intervalType: _getIntervalType(widget.activeTab),
-            interval: 1,
-            majorGridLines: const MajorGridLines(width: 0),
-            axisLine: const AxisLine(width: 0),
-            labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
-            minimum: validData.isNotEmpty ? validData.first.date : null,
-            maximum: validData.isNotEmpty ? validData.last.date : null,
-            plotOffsetEnd: 20,
-            plotOffsetStart: 20,
-          ),
-          primaryYAxis: NumericAxis(
-            opposedPosition: true,
-            axisLine: const AxisLine(width: 0),
-            majorTickLines: const MajorTickLines(size: 0),
+    // Calculate initial visible range (show last 7 periods by default)
+    DateTime? initialVisibleMin;
+    DateTime? initialVisibleMax;
 
-            // ✅ 3. Y-Axis Format ပြင်ဆင်ခြင်း
-            // compactSimpleCurrency အစား compactCurrency ကိုသုံးပြီး symbol ထည့်ပေးရမယ်
-            numberFormat: NumberFormat.compactCurrency(
-                symbol: currencySymbol,
-                decimalDigits: 0
-            ),
+    if (validData.isNotEmpty) {
+      final dataLength = validData.length;
+      int periodsToShow = 7; // Show last 7 periods by default
 
-            labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
-            maximum: animatedMax < 100 ? 100 : animatedMax,
-            minimum: 0,
-          ),
-          tooltipBehavior: TooltipBehavior(
-              enable: true,
-              color: Theme.of(context).colorScheme.surface,
-              builder: (dynamic data, dynamic point, dynamic series, int pointIndex, int seriesIndex) {
-                // Currency symbol ကို helper function ဆီ ပို့ပေးလိုက်ပါ
-                return _buildOriginalTooltip(context, validData, pointIndex, colorScheme, currencySymbol);
-              }
-          ),
-          series: <CartesianSeries>[
-            ColumnSeries<DailySummaryData, DateTime>(
-              name: 'Income',
-              dataSource: validData,
-              xValueMapper: (DailySummaryData sales, _) => sales.date,
-              yValueMapper: (DailySummaryData sales, _) => sales.income,
-              color: colorScheme.secondary,
-              animationDuration: 800,
-              width: 0.7,
-              spacing: 0.2,
-              borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(4)),
-            ),
-            ColumnSeries<DailySummaryData, DateTime>(
-              name: 'Expense',
-              dataSource: validData,
-              xValueMapper: (DailySummaryData sales, _) => sales.date,
-              yValueMapper: (DailySummaryData sales, _) => sales.expense,
-              color: colorScheme.tertiary,
-              animationDuration: 800,
-              width: 0.7,
-              spacing: 0.2,
-              borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(4)),
-            ),
-          ],
-        );
-      },
+      if (dataLength <= periodsToShow) {
+        initialVisibleMin = validData.first.date;
+        initialVisibleMax = validData.last.date;
+      } else {
+        // နောက်ဆုံး ၇ ခုစာကိုပဲ စပေါ်စေခြင်း
+        initialVisibleMin = validData[dataLength - periodsToShow].date;
+        initialVisibleMax = validData.last.date;
+      }
+
+      // Adjust for different time ranges
+      switch (widget.activeTab) {
+        case TimeRangeTab.monthly:
+          initialVisibleMax = DateTime(initialVisibleMax.year, initialVisibleMax.month + 1, 0);
+          break;
+        case TimeRangeTab.yearly:
+          initialVisibleMax = DateTime(initialVisibleMax.year, 12, 31);
+          break;
+        case TimeRangeTab.daily:
+        default:
+          initialVisibleMax = DateTime(initialVisibleMax.year, initialVisibleMax.month,
+              initialVisibleMax.day, 23, 59, 59);
+          break;
+      }
+    }
+
+    // (3) TweenAnimationBuilder ကို ဖြုတ်လိုက်ပါတယ် (Dynamic Y-axis အတွက်)
+    return SfCartesianChart(
+      plotAreaBorderWidth: 0,
+      zoomPanBehavior: _zoomPanBehavior,
+      legend: Legend(
+          isVisible: true,
+          position: LegendPosition.bottom,
+          overflowMode: LegendItemOverflowMode.wrap
+      ),
+      primaryXAxis: DateTimeAxis(
+        dateFormat: dateFormat,
+        intervalType: _getIntervalType(widget.activeTab),
+        // Scroll လုပ်တဲ့အခါ label တွေ မှန်ကန်စွာပေါ်နေစေရန် interval ကို 1 ထားခြင်းက ပိုကောင်းနိုင်ပါတယ်
+        interval: 1,
+        majorGridLines: const MajorGridLines(width: 0),
+        axisLine: const AxisLine(width: 0),
+        labelStyle: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+        ),
+        plotOffsetEnd: 12,
+        //plotOffsetStart: 20,
+        // Set initial visible range to show last 7 periods
+        initialVisibleMinimum: initialVisibleMin,
+        initialVisibleMaximum: initialVisibleMax,
+        labelIntersectAction: AxisLabelIntersectAction.rotate45,
+      ),
+      primaryYAxis: NumericAxis(
+        opposedPosition: true,
+        axisLine: const AxisLine(width: 0),
+        majorTickLines: const MajorTickLines(size: 0),
+        numberFormat: NumberFormat.compactCurrency(
+            symbol: currencySymbol,
+            decimalDigits: 0
+        ),
+        labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+
+        // (2) အရေးအကြီးဆုံး အချက်: မြင်ကွင်းမှာပေါ်နေတဲ့ Bar တွေအလိုက် Y-axis ကို ပြောင်းလဲစေခြင်း
+        anchorRangeToVisiblePoints: true,
+
+        // Maximum ကို ဖယ်လိုက်ပါ (Auto calculate လုပ်စေချင်လို့ပါ)
+        minimum: 0,
+      ),
+      tooltipBehavior: TooltipBehavior(
+          enable: true,
+          color: Theme.of(context).colorScheme.surface,
+          builder: (dynamic data, dynamic point, dynamic series, int pointIndex, int seriesIndex) {
+            return _buildOriginalTooltip(context, validData, pointIndex, colorScheme, currencySymbol);
+          }
+      ),
+      series: <CartesianSeries>[
+        ColumnSeries<DailySummaryData, DateTime>(
+          name: 'Income',
+          dataSource: validData,
+          xValueMapper: (DailySummaryData sales, _) => sales.date,
+          yValueMapper: (DailySummaryData sales, _) => sales.income,
+          color: colorScheme.secondary,
+          animationDuration: 800,
+          // Scroll လုပ်တဲ့အခါ width ပုံသေဖြစ်နေစေရန်
+          width: 0.6,
+          spacing: 0.2,
+          borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(4)),
+        ),
+        ColumnSeries<DailySummaryData, DateTime>(
+          name: 'Expense',
+          dataSource: validData,
+          xValueMapper: (DailySummaryData sales, _) => sales.date,
+          yValueMapper: (DailySummaryData sales, _) => sales.expense,
+          color: colorScheme.tertiary,
+          animationDuration: 800,
+          width: 0.6,
+          spacing: 0.2,
+          borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(4)),
+        ),
+      ],
     );
   }
 
-  // ✅ Parameter မှာ currencySymbol လက်ခံအောင် ပြင်ထားပါတယ်
+  // Tooltip Functions (Original Code)
   Widget _buildOriginalTooltip(
       BuildContext context,
       List<DailySummaryData> validData,
       int pointIndex,
       ColorScheme colorScheme,
-      String currencySymbol // <--- New Parameter
+      String currencySymbol
       ) {
     final DailySummaryData dailyData = pointIndex < validData.length
         ? validData[pointIndex]
@@ -200,13 +227,11 @@ class _ComparisonChartState extends State<ComparisonChart> {
     );
   }
 
-  // ✅ Parameter မှာ currencySymbol လက်ခံအောင် ပြင်ထားပါတယ်
   Widget _buildTooltipRow(String label, double value, Color color, String currencySymbol, {bool isBold = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text('$label: ', style: TextStyle(color: Colors.grey[700], fontSize: 11)),
-        // ✅ 4. Tooltip Format ပြင်ဆင်ခြင်း
         Text(
             NumberFormat.compactCurrency(
                 symbol: currencySymbol,

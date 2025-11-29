@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../core/constants/app_sizes.dart';
 import '../../presentation/viewmodels/currency_viewmodel.dart';
 
 class CurrencyText extends StatelessWidget {
@@ -100,7 +99,7 @@ class CurrencyText extends StatelessWidget {
                 fontSize: useDecimalRatio
                     ? baseStyle.fontSize! * decimalFontSizeRatio
                     : baseStyle.fontSize,
-                color: baseStyle.color?.withOpacity(0.8),
+                color: baseStyle.color,
                 //fontWeight: AppFontWeight.bold,
               ),
             ),
@@ -109,7 +108,7 @@ class CurrencyText extends StatelessWidget {
               text: suffix,
               style: baseStyle.copyWith(
                 fontSize: baseStyle.fontSize! * 0.8,
-                color: baseStyle.color?.withOpacity(0.8),
+                color: baseStyle.color,
               ),
             ),
         ],

@@ -83,15 +83,14 @@ class _CategoryDialogState extends State<CategoryDialog> {
     return AlertDialog(
       title: Text(
         dialogTitle,
-        style: textTheme.titleMedium?.copyWith(
-          color: colorScheme.onSurface,
-          fontWeight: FontWeight.bold,
-        ),
+        style: textTheme.titleMedium, // Adjusted style
       ),
 
+      // UPDATED: Shape to match Amount Dialog
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
+      backgroundColor: colorScheme.surface, // Match Amount Dialog background
 
       content: Form(
         key: _formKey,
@@ -101,9 +100,12 @@ class _CategoryDialogState extends State<CategoryDialog> {
           textCapitalization: TextCapitalization.sentences,
           decoration: InputDecoration(
             hintText: "Enter category name",
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            // UPDATED: TextField Style to match Amount Dialog
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             filled: true,
-            fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            fillColor: colorScheme.surfaceContainer, // Similar to Amount Dialog's fill
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            isDense: true,
           ),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
@@ -118,15 +120,16 @@ class _CategoryDialogState extends State<CategoryDialog> {
           onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
           child: const Text("Cancel"),
         ),
+        // UPDATED: Button to FilledButton
         FilledButton(
           onPressed: _isSubmitting ? null : _saveOrUpdateCategory,
           child: _isSubmitting
-              ? const SizedBox(
+              ? SizedBox(
             width: 20,
             height: 20,
             child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
+              strokeWidth: 3,
+              color: colorScheme.onPrimary,
             ),
           )
               : Text(buttonText),

@@ -11,12 +11,12 @@ class BottomNavBar extends StatelessWidget {
     required this.onTap,
   });
 
-  // တစ်ခါတည်းနဲ့ အိုင်ကွန်နဲ့ label ကို စုစည်းထားတာ ပိုရှင်းလင်းတယ်
   static const List<({IconData icon, String label})> _items = [
     (icon: AppIcons.home,     label: 'Home'),
     (icon: AppIcons.income,   label: 'Income'),
     (icon: AppIcons.expense,  label: 'Expense'),
     (icon: AppIcons.chart,    label: 'Chart'),
+    (icon:  Icons.trending_up,  label: 'Summary'),
     (icon: AppIcons.profile,  label: 'Profile'),
   ];
 
@@ -26,7 +26,7 @@ class BottomNavBar extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return ColoredBox(
-      color: colorScheme.surfaceContainerLowest, // M3 မှာ surface ထက် အနည်းငယ်မြင့်တဲ့ အရောင်သုံးတာ ပိုလှတယ်
+      color: colorScheme.surfaceContainerLowest,
       child: SafeArea(
         top: false,
         child: Container(
@@ -34,7 +34,7 @@ class BottomNavBar extends StatelessWidget {
             border: Border(
               top: BorderSide(
                 color: colorScheme.outlineVariant,
-                width: 0.8, // iOS-style အနည်းငယ်ထူအောင်
+                width: 0.8,
               ),
             ),
           ),
@@ -42,17 +42,17 @@ class BottomNavBar extends StatelessWidget {
             currentIndex: currentIndex,
             onTap: onTap,
             type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.transparent, // Container က အရောင်ပေးပြီးသားမို့ transparent လုပ်ထား
+            backgroundColor: Colors.transparent,
 
             selectedItemColor: colorScheme.primary,
-            unselectedItemColor: colorScheme.onSurfaceVariant.withOpacity(0.6),
+            unselectedItemColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
 
             selectedFontSize: 12,
             unselectedFontSize: 12,
             showSelectedLabels: true,
             showUnselectedLabels: true,
 
-            // label style ကို theme ထဲက default ကိုပဲ သုံးလို့ရတယ် (လိုအပ်ရင်ပဲ override)
+
             selectedLabelStyle: theme.textTheme.labelSmall?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -60,7 +60,7 @@ class BottomNavBar extends StatelessWidget {
 
             items: _items.map((item) => BottomNavigationBarItem(
               icon: Icon(item.icon, size: 24),
-              activeIcon: Icon(item.icon, size: 26), // selected ဖြစ်ရင် အနည်းငယ်ကြီးအောင် (M3 recommendation)
+              activeIcon: Icon(item.icon, size: 26),
               label: item.label,
             )).toList(),
           ),

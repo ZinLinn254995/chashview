@@ -47,15 +47,19 @@ class _AddTitleDialogState extends State<AddTitleDialog> {
     super.dispose();
   }
 
+  // UPDATED: Styling based on Amount Dialog
   InputDecoration buildDecoration(String label, {String? hint}) {
+    final colorScheme = Theme.of(context).colorScheme;
     return InputDecoration(
       labelText: label,
       hintText: hint,
+      // Amount Dialog Style
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
       ),
       filled: true,
-      fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+      fillColor: colorScheme.surfaceContainer, // Similar to Amount Dialog's fill
+      // Optional: keep it compact
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       isDense: true,
     );
@@ -74,11 +78,13 @@ class _AddTitleDialogState extends State<AddTitleDialog> {
     final bool isCategoryAvailable = categories.isNotEmpty;
 
     return AlertDialog(
+      // UPDATED: Shape to match Amount Dialog
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: colorScheme.surface, // Match Amount Dialog background
       title: Center(
         child: Text(
           "Add ${widget.type == 'income' ? 'Income' : 'Expense'} Title",
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: theme.textTheme.titleMedium, // Adjusted style
         ),
       ),
       content: SingleChildScrollView(
@@ -141,14 +147,14 @@ class _AddTitleDialogState extends State<AddTitleDialog> {
         ),
       ),
       actions: [
-        // Cancel Button - Disabled while saving
+        // Cancel Button
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
           child: const Text("Cancel"),
         ),
 
-        // Save Button - Shows Loading Spinner when saving
-        ElevatedButton(
+        // Save Button - UPDATED to FilledButton
+        FilledButton(
           onPressed: _isSaving ? null : _saveTitle,
           child: _isSaving
               ? SizedBox(
@@ -166,7 +172,6 @@ class _AddTitleDialogState extends State<AddTitleDialog> {
   }
 
   Future<void> _showCategoryDialog(List<CategoryEntity> categories) async {
-    // ... (Category dialog logic remains the same) ...
     String? tempSelectedId = selectedCategoryId;
 
     await showDialog(
@@ -176,6 +181,9 @@ class _AddTitleDialogState extends State<AddTitleDialog> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
+              // UPDATED: Shape to match Amount Dialog
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              backgroundColor: Theme.of(context).colorScheme.surface,
               title: Text(
                   "Select ${widget.type == 'income' ? 'Income' : 'Expense'} Category"),
               contentPadding: const EdgeInsets.only(top: 12, bottom: 0),
@@ -205,7 +213,7 @@ class _AddTitleDialogState extends State<AddTitleDialog> {
                   onPressed: () => Navigator.pop(context),
                   child: const Text("Cancel"),
                 ),
-                TextButton(
+                FilledButton( // Use FilledButton for confirmation
                   onPressed: () {
                     if (tempSelectedId != null) {
                       setState(() {
@@ -267,7 +275,3 @@ class _AddTitleDialogState extends State<AddTitleDialog> {
     }
   }
 }
-
-// -----------------------------------------------------------------------------
-// _SaveStatusDialog class is REMOVED as requested.
-// -----------------------------------------------------------------------------

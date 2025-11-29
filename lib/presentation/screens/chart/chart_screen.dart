@@ -8,6 +8,8 @@ import '../../widgets/charts/comparison_chart.dart';
 import '../../widgets/charts/income_expense_line_chart.dart';
 import '../../widgets/charts/net_profit_line_chart.dart';
 import '../../widgets/time_range_tab.dart';
+// ✅ Import ChartDetailScreen
+import 'chart_detail_screen.dart';
 
 class ChartScreen extends StatefulWidget {
   const ChartScreen({super.key});
@@ -54,6 +56,18 @@ class _ChartScreenState extends State<ChartScreen> {
     viewModel.subscribeChartData(_selectedTab);
   }
 
+  // ✅ Full Screen ဖွင့်ပေးမည့် Function
+  void _openFullScreenChart(String title, Widget Function() chartBuilder) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ChartDetailScreen(
+          title: title,
+          chartBuilder: chartBuilder,
+        ),
+      ),
+    );
+  }
+
   // Widget Builders
   Widget _buildCustomAppBar(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -94,37 +108,8 @@ class _ChartScreenState extends State<ChartScreen> {
           ),
         ],
       ),
-      /*Row(
-        children: [
-          Expanded(
-            child: Text(
-              _kScreenTitle,
-              style: textTheme.headlineSmall?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            color: colorScheme.onSurface,
-            onPressed: _onSettingsPressed,
-          ),
-        ],
-      ),*/
     );
   }
-
-  /*Widget _buildTabSelector(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(AppPadding.md),
-      child: TimeRangeTabWidget(
-        selectedTab: _selectedTab,
-        showAllTimeTab: false,
-        onTabSelected: _onTabSelected,
-      ),
-    );
-  }*/
 
   Widget _buildChartsContent(BuildContext context) {
     return Expanded(
@@ -150,27 +135,56 @@ class _ChartScreenState extends State<ChartScreen> {
         vertical: _kVerticalPadding,
       ),
       children: [
+        // 1. Comparison Chart (Column)
         _buildChartSection(
           title: "COLUMN CHART",
+          // List View မှာပြမယ့် Chart
           chart: ComparisonChart(
             data: viewModel.chartData,
             activeTab: _selectedTab,
           ),
-        ),
-        const Divider(height: _kDividerHeight),
-        _buildChartSection(
-          title: "LINE CHART",
-          chart: IncomeExpenseLineChart(
+          // Full Screen မှာပြမယ့် Chart Builder (ComparisonChart မှာ enableZoom မရှိရင် ဒီတိုင်းထားနိုင်ပါတယ်)
+          fullScreenBuilder: () => ComparisonChart(
             data: viewModel.chartData,
             activeTab: _selectedTab,
           ),
         ),
+
         const Divider(height: _kDividerHeight),
+
+        // 2. Income/Expense Line Chart
+        _buildChartSection(
+          title: "LINE CHART",
+          // List View (Zoom ပိတ်)
+          chart: IncomeExpenseLineChart(
+            data: viewModel.chartData,
+            activeTab: _selectedTab,
+            enableZoom: false,
+          ),
+          // Full Screen (Zoom ဖွင့်)
+          fullScreenBuilder: () => IncomeExpenseLineChart(
+            data: viewModel.chartData,
+            activeTab: _selectedTab,
+            enableZoom: true, // ✅ Enable Zoom for Full Screen
+          ),
+        ),
+
+        const Divider(height: _kDividerHeight),
+
+        // 3. Net Profit Line Chart
         _buildChartSection(
           title: "NET PROFIT CHART",
+          // List View (Zoom ပိတ်)
           chart: NetProfitLineChart(
             data: viewModel.chartData,
             activeTab: _selectedTab,
+            enableZoom: false,
+          ),
+          // Full Screen (Zoom ဖွင့်)
+          fullScreenBuilder: () => NetProfitLineChart(
+            data: viewModel.chartData,
+            activeTab: _selectedTab,
+            enableZoom: true, // ✅ Enable Zoom for Full Screen
           ),
         ),
         const SizedBox(height: _kBottomPadding),
@@ -178,22 +192,50 @@ class _ChartScreenState extends State<ChartScreen> {
     );
   }
 
-  Widget _buildChartSection({required String title, required Widget chart}) {
+  // ✅ Updated _buildChartSection to accept fullScreenBuilder
+  Widget _buildChartSection({
+    required String title,
+    required Widget chart,
+    required Widget Function() fullScreenBuilder, // Builder function ထည့်လိုက်ပါတယ်
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: textTheme.labelSmall?.copyWith(
-            color: colorScheme.primary,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-          ),
+        // Header Row with Title and Full Screen Icon
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: textTheme.labelSmall?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.fullscreen, color: colorScheme.primary),
+              tooltip: 'View Full Screen',
+              onPressed: () => _openFullScreenChart(title, fullScreenBuilder),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
-        SizedBox(height: _kChartHeight, child: chart),
+
+        // Chart Area (Tap to open full screen as well)
+        GestureDetector(
+          onTap: () => _openFullScreenChart(title, fullScreenBuilder),
+          behavior: HitTestBehavior.opaque, // Ensures empty spaces are clickable
+          child: SizedBox(
+            height: _kChartHeight,
+            child: chart,
+          ),
+        ),
       ],
     );
   }
@@ -206,7 +248,6 @@ class _ChartScreenState extends State<ChartScreen> {
         child: Column(
           children: [
             _buildCustomAppBar(context),
-            //_buildTabSelector(context),
             _buildChartsContent(context),
           ],
         ),

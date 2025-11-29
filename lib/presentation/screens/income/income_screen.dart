@@ -493,7 +493,7 @@ class _IncomeScreenState extends State<IncomeScreen>
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(16),
       ),
       clipBehavior: Clip.hardEdge,
       child: Column(
