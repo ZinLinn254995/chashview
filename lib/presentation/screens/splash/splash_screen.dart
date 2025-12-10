@@ -8,6 +8,7 @@ import '../../../di/injection_container.dart' as di;
 import '../../main_app_content.dart';
 import '../../viewmodels/splash_viewmodel.dart';
 import '../auth/login_screen.dart';
+import '../auth/subscription_locked_screen.dart'; // Import လုပ်ရန်မမေ့ပါနှင့်
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -17,20 +18,34 @@ class SplashScreen extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return ChangeNotifierProvider(
-      create: (_) => di.sl<SplashViewModel>(), // ✅ GetIt ကနေ inject
+      create: (_) => di.sl<SplashViewModel>(),
       child: Consumer<SplashViewModel>(
         builder: (context, vm, _) {
+
+          // Navigation Logic
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (vm.state == SplashState.authenticated) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const MainAppContent()),
-              );
-            } else if (vm.state == SplashState.unauthenticated) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
+            switch (vm.navigation) {
+              case SplashNavigation.toHome:
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MainAppContent()),
+                );
+                break;
+              case SplashNavigation.toLogin:
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+                break;
+              case SplashNavigation.toLocked:
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SubscriptionLockedScreen()),
+                );
+                break;
+              case SplashNavigation.none:
+              // Loading... ဘာမှမလုပ်ဘူး
+                break;
             }
           });
 

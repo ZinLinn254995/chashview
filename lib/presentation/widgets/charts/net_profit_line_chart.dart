@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -96,9 +95,6 @@ class _NetProfitLineChartState extends State<NetProfitLineChart> {
         // Setting the visible range
         initialVisibleMinimum: initialVisibleMin,
         initialVisibleMaximum: initialVisibleMax,
-
-        plotOffsetEnd: 20,
-        plotOffsetStart: 20,
       ),
       primaryYAxis: NumericAxis(
         axisLine: const AxisLine(width: 0),
@@ -121,19 +117,19 @@ class _NetProfitLineChartState extends State<NetProfitLineChart> {
           PlotBand(
             start: 0,
             end: 1000000000, // Very large number
-            color: colorScheme.secondaryContainer.withOpacity(0.5),
+            color: colorScheme.secondaryContainer.withValues(alpha: 0.5),
           ),
           // Negative area (-Infinity to 0)
           PlotBand(
             start: -1000000000, // Very small number
             end: 0,
-            color: colorScheme.tertiaryContainer.withOpacity(0.5),
+            color: colorScheme.tertiaryContainer.withValues(alpha: 0.5),
           ),
           // Zero line
           PlotBand(
             start: 0,
             end: 0,
-            borderColor: Colors.grey.withOpacity(0.5),
+            borderColor: Colors.grey.withValues(alpha: 0.5),
             borderWidth: 1,
             dashArray: const <double>[4, 4],
           ),
@@ -168,7 +164,7 @@ class _NetProfitLineChartState extends State<NetProfitLineChart> {
           markerSettings: const MarkerSettings(isVisible: true, width: 4, height: 4),
           emptyPointSettings: EmptyPointSettings(
             mode: EmptyPointMode.zero,
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
           ),
         ),
       ],
@@ -245,9 +241,7 @@ class _NetProfitLineChartState extends State<NetProfitLineChart> {
       case TimeRangeTab.allTime:
         periodText = dateFormat.format(dailyData.date);
         break;
-      default:
-        periodText = DateFormat('MMM d, yyyy').format(dailyData.date);
-    }
+      }
 
     final valueColor = netProfit >= 0 ? colorScheme.secondary : colorScheme.tertiary;
 
@@ -259,7 +253,7 @@ class _NetProfitLineChartState extends State<NetProfitLineChart> {
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

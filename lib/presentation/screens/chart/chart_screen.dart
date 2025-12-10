@@ -3,12 +3,12 @@ import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/routing/route_names.dart';
+import '../../viewmodels/auth_viewmodel.dart'; // 🔥 FIX: Import AuthViewModel
 import '../../viewmodels/summary_viewmodel.dart';
 import '../../widgets/charts/comparison_chart.dart';
 import '../../widgets/charts/income_expense_line_chart.dart';
 import '../../widgets/charts/net_profit_line_chart.dart';
 import '../../widgets/time_range_tab.dart';
-// ✅ Import ChartDetailScreen
 import 'chart_detail_screen.dart';
 
 class ChartScreen extends StatefulWidget {
@@ -33,13 +33,36 @@ class _ChartScreenState extends State<ChartScreen> {
   @override
   void initState() {
     super.initState();
-    _scheduleInitialSubscription();
+    // 🔥 FIX: User ဝင်လာမယ့်အချိန်ကို စောင့်ပြီး Data ဆွဲဖို့ Listener ထည့်ပါ
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndSubscribe();
+      context.read<AuthViewModel>().addListener(_onAuthUpdated);
+    });
   }
 
-  void _scheduleInitialSubscription() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updateChartSubscription();
-    });
+  @override
+  void dispose() {
+    // 🔥 FIX: Listener ကို ပြန်ဖြုတ်ပေးရပါမယ် (Memory Leak မဖြစ်အောင်)
+    context.read<AuthViewModel>().removeListener(_onAuthUpdated);
+    super.dispose();
+  }
+
+  // 🔥 FIX: Auth ပြောင်းလဲမှုရှိတိုင်း ခေါ်မည့် Function
+  void _onAuthUpdated() {
+    _checkAndSubscribe();
+  }
+
+  // 🔥 FIX: User ရှိ၊ မရှိ စစ်ဆေးပြီးမှ Data ဆွဲမည့် Logic
+  void _checkAndSubscribe() {
+    if (!mounted) return;
+
+    final authViewModel = context.read<AuthViewModel>();
+    final summaryViewModel = context.read<SummaryViewModel>();
+
+    // User ရှိပြီး Data က Empty ဖြစ်နေရင် (သို့) အရင် User ဟောင်း Data ပျက်သွားရင် ပြန်ဆွဲပါ
+    if (authViewModel.user != null && summaryViewModel.chartData.isEmpty) {
+      summaryViewModel.subscribeChartData(_selectedTab);
+    }
   }
 
   void _onTabSelected(TimeRangeTab tab) {
@@ -143,7 +166,7 @@ class _ChartScreenState extends State<ChartScreen> {
             data: viewModel.chartData,
             activeTab: _selectedTab,
           ),
-          // Full Screen မှာပြမယ့် Chart Builder (ComparisonChart မှာ enableZoom မရှိရင် ဒီတိုင်းထားနိုင်ပါတယ်)
+          // Full Screen မှာပြမယ့် Chart Builder
           fullScreenBuilder: () => ComparisonChart(
             data: viewModel.chartData,
             activeTab: _selectedTab,
@@ -165,7 +188,7 @@ class _ChartScreenState extends State<ChartScreen> {
           fullScreenBuilder: () => IncomeExpenseLineChart(
             data: viewModel.chartData,
             activeTab: _selectedTab,
-            enableZoom: true, // ✅ Enable Zoom for Full Screen
+            enableZoom: true,
           ),
         ),
 
@@ -184,7 +207,7 @@ class _ChartScreenState extends State<ChartScreen> {
           fullScreenBuilder: () => NetProfitLineChart(
             data: viewModel.chartData,
             activeTab: _selectedTab,
-            enableZoom: true, // ✅ Enable Zoom for Full Screen
+            enableZoom: true,
           ),
         ),
         const SizedBox(height: _kBottomPadding),
@@ -192,11 +215,10 @@ class _ChartScreenState extends State<ChartScreen> {
     );
   }
 
-  // ✅ Updated _buildChartSection to accept fullScreenBuilder
   Widget _buildChartSection({
     required String title,
     required Widget chart,
-    required Widget Function() fullScreenBuilder, // Builder function ထည့်လိုက်ပါတယ်
+    required Widget Function() fullScreenBuilder,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -230,7 +252,7 @@ class _ChartScreenState extends State<ChartScreen> {
         // Chart Area (Tap to open full screen as well)
         GestureDetector(
           onTap: () => _openFullScreenChart(title, fullScreenBuilder),
-          behavior: HitTestBehavior.opaque, // Ensures empty spaces are clickable
+          behavior: HitTestBehavior.opaque,
           child: SizedBox(
             height: _kChartHeight,
             child: chart,

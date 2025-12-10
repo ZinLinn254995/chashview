@@ -8,6 +8,7 @@ class TitleModel extends TitleEntity {
     required super.name,
     required super.categoryId,
     required super.bookmark,
+    required super.cart,
   });
 
   factory TitleModel.fromJson(Map<String, dynamic> json, String id) {
@@ -16,6 +17,7 @@ class TitleModel extends TitleEntity {
       name: json['name'] ?? '',
       categoryId: json['categoryId'] ?? '', // 🔥 Read categoryId
       bookmark: json['bookmark'] ?? false,
+      cart: json['cart'] ?? false,
     );
   }
 
@@ -24,6 +26,7 @@ class TitleModel extends TitleEntity {
       'name': name,
       'categoryId': categoryId, // 🔥 Write categoryId
       'bookmark': bookmark,
+      'cart': cart,
     };
   }
 }

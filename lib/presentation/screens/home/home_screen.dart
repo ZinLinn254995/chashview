@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+// Constants & Routes
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/routing/route_names.dart';
+
+// Entities
 import '../../../domain/entities/category_entity.dart';
 import '../../../domain/entities/expense_entity.dart';
 import '../../../domain/entities/income_entity.dart';
 import '../../../domain/entities/title_entity.dart';
+
+// ViewModels
 import '../../viewmodels/auth_viewmodel.dart';
-import '../../viewmodels/cart_viewmodel.dart'; // Cart ViewModel ထည့်ပါ
 import '../../viewmodels/category_viewmodel.dart';
 import '../../viewmodels/expense_viewmodel.dart';
 import '../../viewmodels/income_viewmodel.dart';
 import '../../viewmodels/summary_viewmodel.dart';
 import '../../viewmodels/title_viewmodel.dart';
+
+// Widgets
 import '../../widgets/currency_text.dart';
+import '../../widgets/custom_empty_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,7 +44,19 @@ class _HomeScreenState extends State<HomeScreen>
   void _scheduleInitialLoad() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final summaryVM = Provider.of<SummaryViewModel>(context, listen: false);
-      summaryVM.subscribe(SummaryTimeRange.daily);
+      final authVM = Provider.of<AuthViewModel>(context, listen: false);
+
+      // User ရှိမှသာ data range subscribe လုပ်မည်
+      if (authVM.user != null) {
+        final now = DateTime.now();
+        final start = DateTime(now.year, now.month, now.day);
+        final end = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+
+        summaryVM.subscribeWithRange(SummaryTimeRange.homeDaily, start, end);
+
+        // Note: Category & Title ViewModels init streams automatically in their constructor
+        // based on AuthViewModel, so we don't need to manually call fetch here.
+      }
     });
   }
 
@@ -47,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _onCartPressed() {
-    Navigator.pushNamed(context, RouteNames.cart); // Cart Screen ကိုသွားမယ်
+    Navigator.pushNamed(context, RouteNames.cart);
   }
 
   @override
@@ -71,6 +91,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
 
+            // Tab Bar
             TabBar(
               controller: _tabController,
               labelColor: colorScheme.primary,
@@ -105,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen>
               ],
             ),
 
-            // TabBarView
+            // TabBarView Content
             Expanded(
               child: TabBarView(
                 controller: _tabController,
@@ -123,18 +144,18 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ==================== Header ====================
   Widget _buildTopHeader(BuildContext context) {
-    return Consumer<AuthViewModel>(
-      builder: (context, authVM, _) {
-        final name = authVM.user?.displayName ?? 'User';
+    return Consumer2<AuthViewModel, TitleViewModel>(
+      builder: (context, authVM, titleVM, _) {
+        final name = authVM.user?.displayName ?? '...';
+        final greetingMessage = _getDynamicGreeting();
 
-        // Dynamic Greeting Message ရယူခြင်း
-        final String greetingMessage = _getDynamicGreeting();
+        // TitleViewModel ရှိ expenseTitles ကို သုံးပြီး Cart Count တွက်ပါ
+        final cartCount = titleVM.expenseTitles.where((t) => t.cart).length;
 
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              // စာသားရှည်ရင် အောက်မကျအောင် Expanded သုံးပါတယ်
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -150,9 +171,10 @@ class _HomeScreenState extends State<HomeScreen>
                     key: ValueKey<String>(greetingMessage),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       height: 1.3,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.5),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.5),
                     ),
                   ),
                 ],
@@ -160,19 +182,14 @@ class _HomeScreenState extends State<HomeScreen>
             ),
 
             // --- Cart Icon Section ---
-            Consumer<CartViewModel>(
-              builder: (context, cartVM, child) {
-                final cartCount = cartVM.cartItems.length;
-                return Badge(
-                  isLabelVisible: cartCount > 0,
-                  label: Text(cartCount.toString()),
-                  offset: const Offset(-4, 0),
-                  child: IconButton(
-                    onPressed: _onCartPressed,
-                    icon: const Icon(Icons.shopping_cart_outlined),
-                  ),
-                );
-              },
+            Badge(
+              isLabelVisible: cartCount > 0,
+              label: Text(cartCount.toString()),
+              offset: const Offset(-4, 0),
+              child: IconButton(
+                onPressed: _onCartPressed,
+                icon: const Icon(Icons.shopping_cart_outlined),
+              ),
             ),
           ],
         );
@@ -180,42 +197,43 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // --- Helper Logic Function ---
   String _getDynamicGreeting() {
     final hour = DateTime.now().hour;
-
-    String timeGreeting;
     if (hour < 12) {
-      timeGreeting = "Good Morning! Ready to track?";
+      return "Good Morning! Ready to track?";
     } else if (hour < 17) {
-      timeGreeting = "Good Afternoon! Keep it up.";
+      return "Good Afternoon! Keep it up.";
     } else if (hour < 21) {
-      timeGreeting = "Good Evening! How was your spending?";
+      return "Good Evening! How was your spending?";
     } else {
-      timeGreeting = "Good Night! Rest well.";
+      return "Good Night! Rest well.";
     }
-
-    return timeGreeting;
   }
 
+  // ==================== Summary Card ====================
   Widget _buildDailySummaryCard(BuildContext context) {
     return Consumer<SummaryViewModel>(
       builder: (context, vm, child) {
-        final data = vm.getSummary(SummaryTimeRange.daily);
-        final income = data?.totalIncome ?? 0.0;
-        final expense = data?.totalExpense ?? 0.0;
-        final net = data?.net ?? 0.0;
+        final data = vm.getSummary(SummaryTimeRange.homeDaily);
+
+        // 🔥 Loading State: Data မရောက်သေးရင် Skeleton ပြမည်
+        if (vm.isLoading || data == null) {
+          return const _SkeletonSummaryCard();
+        }
+
+        final income = data.totalIncome;
+        final expense = data.totalExpense;
+        final net = data.net;
 
         return Container(
+          height: 100,
           margin: const EdgeInsets.symmetric(vertical: 8),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          // Compact padding
           decoration: BoxDecoration(
-            // Purple to Blue Gradient
             gradient: const LinearGradient(
               colors: [
-                Color(0xFF6200EA), // Deep Purple Accent
-                Color(0xFF2962FF), // Blue Accent
+                Color(0xFF6200EA),
+                Color(0xFF2962FF),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -232,10 +250,9 @@ class _HomeScreenState extends State<HomeScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // --- Left Side: Net Amount (Major Focus) ---
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min, // Keep it compact
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     "Today's Net",
@@ -251,28 +268,24 @@ class _HomeScreenState extends State<HomeScreen>
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
-                      fontSize: 22, // Large font for visibility
+                      fontSize: 22,
                     ),
                   ),
                 ],
               ),
-
-              // --- Right Side: Income & Expense (Stacked) ---
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Income Row
                   _buildCompactRow(
                     icon: Icons.arrow_downward_rounded,
-                    color: const Color(0xFF69F0AE), // Bright Green
+                    color: const Color(0xFF69F0AE),
                     amount: income,
                   ),
-                  const SizedBox(height: 8), // Gap between income and expense
-                  // Expense Row
+                  const SizedBox(height: 8),
                   _buildCompactRow(
                     icon: Icons.arrow_upward_rounded,
-                    color: const Color(0xFFFF8A80), // Bright Red
+                    color: const Color(0xFFFF8A80),
                     amount: expense,
                   ),
                 ],
@@ -284,7 +297,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // Helper for Right Side Rows
   Widget _buildCompactRow({
     required IconData icon,
     required Color color,
@@ -309,18 +321,16 @@ class _HomeScreenState extends State<HomeScreen>
 }
 
 // =============================================================================
-// Bookmarked Titles Grid (Income & Expense)
+// Bookmarked Grouped Grid with Synchronized Loading
 // =============================================================================
 class _BookmarkedGroupedGrid extends StatelessWidget {
   final String type; // 'income' or 'expense'
 
   const _BookmarkedGroupedGrid({required this.type});
 
-  // ==================== Amount Dialog ====================
-  Future<void> _showAmountDialog(
-    BuildContext context,
-    TitleEntity title,
-  ) async {
+  // ... (_showAmountDialog function is same as before) ...
+  Future<void> _showAmountDialog(BuildContext context, TitleEntity title) async {
+    // (ယခင် code အတိုင်းထားပါ)
     final TextEditingController controller = TextEditingController();
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -381,7 +391,6 @@ class _BookmarkedGroupedGrid extends StatelessWidget {
       ),
     );
 
-    // Dialog ကနေ amount ရရင် သက်ဆိုင်ရာ ViewModel ကို ခေါ်ပြီး save လုပ်
     if (amount != null && context.mounted) {
       if (type == 'income') {
         final incomeVM = context.read<IncomeViewModel>();
@@ -420,8 +429,26 @@ class _BookmarkedGroupedGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<CategoryViewModel, TitleViewModel>(
-      builder: (context, categoryVM, titleVM, child) {
+    return Consumer3<CategoryViewModel, TitleViewModel, SummaryViewModel>(
+      builder: (context, categoryVM, titleVM, summaryVM, child) {
+
+        // 🔥 KEY FIX IS HERE 🔥
+
+        // ၁. Summary Data ကိုအရင်ဆွဲထုတ်ပါ
+        final summaryData = summaryVM.getSummary(SummaryTimeRange.homeDaily);
+
+        // ၂. Loading Condition ကို ပိုတိကျအောင်စစ်ပါ
+        // ViewModel တွေ Loading ဖြစ်နေရင် (သို့မဟုတ်) Summary Data က null ဖြစ်နေရင် (မရောက်သေးရင်)
+        // Skeleton ကို ပြပါမယ်။ ဒါဆိုရင် Initial State မှာ Empty Widget မပြတော့ပါဘူး။
+        final bool isInitializing = summaryData == null;
+        final bool isLoading = categoryVM.isLoading || titleVM.isLoading || summaryVM.isLoading;
+
+        if (isLoading || isInitializing) {
+          return const _SkeletonGrid();
+        }
+
+        // --- Data Loaded Logic Starts Here ---
+
         final allCategories = categoryVM.getCategoriesByType(type);
         final allTitles = titleVM.getTitlesByType(type);
 
@@ -432,28 +459,21 @@ class _BookmarkedGroupedGrid extends StatelessWidget {
           final bookmarked = allTitles
               .where((t) => t.categoryId == cat.id && t.bookmark)
               .toList();
+
           if (bookmarked.isNotEmpty) {
             relevantCategories.add(cat);
             titlesByCategory[cat.id] = bookmarked;
           }
         }
 
+        // Empty State Check (Data တကယ်ရောက်ပြီးမှ စစ်ဆေးခြင်း)
         if (relevantCategories.isEmpty) {
           return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.bookmark_border,
-                  size: 56,
-                  color: Theme.of(context).disabledColor,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  "No bookmarked ${type}s yet",
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              ],
+            child: CustomEmptyWidget(
+              type: EmptyStateType.section,
+              title: "No Shortcuts",
+              message: "Bookmark your frequently used ${type}s to see them here.",
+              icon: Icons.bookmark_border,
             ),
           );
         }
@@ -500,10 +520,9 @@ class _BookmarkedGroupedGrid extends StatelessWidget {
     );
   }
 
-  // ==================== Title Card ====================
   Widget _buildTitleCard(BuildContext context, TitleEntity title) {
+    // (Code မပြောင်းလဲပါ - ယခင်အတိုင်းထားပါ)
     final colorScheme = Theme.of(context).colorScheme;
-
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => _showAmountDialog(context, title),
@@ -537,6 +556,125 @@ class _BookmarkedGroupedGrid extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// =============================================================================
+// 🦴 SKELETON WIDGETS (For Smooth Loading)
+// =============================================================================
+
+class _SkeletonSummaryCard extends StatelessWidget {
+  const _SkeletonSummaryCard();
+
+  @override
+  Widget build(BuildContext context) {
+    // မီးခိုးရောင်ဖျော့ဖျော့ background
+    final baseColor =
+    Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3);
+    final highlightColor =
+    Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6);
+
+    return Container(
+      height: 100,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: baseColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Left side skeleton
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(width: 80, height: 12, color: highlightColor),
+              const SizedBox(height: 10),
+              Container(
+                width: 120,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: highlightColor,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+          // Right side skeleton
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                  width: 80,
+                  height: 14,
+                  decoration: BoxDecoration(
+                      color: highlightColor,
+                      borderRadius: BorderRadius.circular(4))),
+              const SizedBox(height: 12),
+              Container(
+                  width: 80,
+                  height: 14,
+                  decoration: BoxDecoration(
+                      color: highlightColor,
+                      borderRadius: BorderRadius.circular(4))),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+}
+
+class _SkeletonGrid extends StatelessWidget {
+  const _SkeletonGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    final baseColor = Theme.of(context).colorScheme.surfaceContainerHighest;
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(AppPadding.md),
+      itemCount: 3, // Dummy categories
+      itemBuilder: (context, index) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Category Title Skeleton
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 100,
+              height: 16,
+              decoration: BoxDecoration(
+                color: baseColor.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            // Grid Skeleton
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 3.2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: 4, // Dummy items
+              itemBuilder: (context, i) => Container(
+                decoration: BoxDecoration(
+                  color: baseColor.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppPadding.xl),
+          ],
+        );
+      },
     );
   }
 }

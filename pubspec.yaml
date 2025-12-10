@@ -59,6 +59,7 @@ dependencies:
   syncfusion_flutter_charts: ^31.2.12
 
   flutter_slidable: ^4.0.3
+  country_flags: ^2.0.0
 
   # Icons
   cupertino_icons: ^1.0.8

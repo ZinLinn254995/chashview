@@ -1,13 +1,14 @@
-// cart_screen.dart - updated with amount dialog functionality
-import 'package:chashview/presentation/widgets/label_text.dart';
+// cart_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../domain/entities/category_entity.dart';
 import '../../../domain/entities/expense_entity.dart';
 import '../../../domain/entities/title_entity.dart';
-import '../../viewmodels/cart_viewmodel.dart';
 import '../../viewmodels/category_viewmodel.dart';
-import '../../viewmodels/expense_viewmodel.dart'; // Expense ViewModel ထည့်ပါ
+import '../../viewmodels/expense_viewmodel.dart';
+import '../../viewmodels/title_viewmodel.dart'; // 🔥 NEW: TitleViewModel
+import '../../widgets/custom_empty_widget.dart';
+import '../../widgets/label_text.dart'; // သင့် project path အတိုင်းထားပါ
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -16,7 +17,7 @@ class CartScreen extends StatelessWidget {
   Future<void> _showAmountDialog(
       BuildContext context,
       TitleEntity title,
-      CartViewModel cartVM,
+      TitleViewModel titleVM, // 🔥 Updated: accepts TitleViewModel
       ) async {
     final TextEditingController controller = TextEditingController();
     final colorScheme = Theme.of(context).colorScheme;
@@ -30,7 +31,7 @@ class CartScreen extends StatelessWidget {
         title: Row(
           children: [
             Icon(
-              Icons.remove_circle, // Expense icon only since cart has only expense items
+              Icons.remove_circle,
               color: colorScheme.tertiary,
             ),
             const SizedBox(width: 12),
@@ -89,8 +90,9 @@ class CartScreen extends StatelessWidget {
 
       await expenseVM.addExpense(newExpense);
 
-      // Expense add ပြီးရင် cart ကနေ remove လုပ်
-      cartVM.removeFromCart(title.id);
+      // 🔥 Updated: TitleViewModel ကိုသုံးပြီး Cart ဖြုတ်ပါ
+      // Note: 'expense' type ကို hardcode ထည့်ထားပါတယ် (Cart က expense အတွက်ပဲမို့ပါ)
+      await titleVM.toggleTitleCart('expense', title.id, false);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -111,46 +113,34 @@ class CartScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Shopping Cart'),
         actions: [
-          Consumer<CartViewModel>(
-            builder: (context, cartVM, child) {
-              if (cartVM.cartItems.isEmpty) return const SizedBox();
+          // 🔥 Updated: Consumer for TitleViewModel
+          Consumer<TitleViewModel>(
+            builder: (context, titleVM, child) {
+              // Expense titles ထဲက cart=true ဖြစ်တာတွေကို ယူမယ်
+              final cartItems = titleVM.expenseTitles.where((t) => t.cart).toList();
+
+              if (cartItems.isEmpty) return const SizedBox();
               return IconButton(
-                padding: EdgeInsets.only(right: 16),
+                padding: const EdgeInsets.only(right: 16),
                 icon: const Icon(Icons.clear_all_rounded),
-                onPressed: () => _showClearCartDialog(context, cartVM),
+                onPressed: () => _showClearCartDialog(context, titleVM, cartItems),
               );
             },
           ),
         ],
       ),
-      body: Consumer2<CategoryViewModel, CartViewModel>(
-        builder: (context, categoryVM, cartVM, child) {
-          final cartItems = cartVM.cartItems;
+      // 🔥 Updated: Consumer2 with TitleViewModel
+      body: Consumer2<CategoryViewModel, TitleViewModel>(
+        builder: (context, categoryVM, titleVM, child) {
+          // 🔥 Updated: Get items from TitleViewModel
+          final cartItems = titleVM.expenseTitles.where((t) => t.cart).toList();
 
           if (cartItems.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.shopping_cart_outlined,
-                    size: 64,
-                    color: Theme.of(context).disabledColor,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    "Your cart is empty",
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Add items from your expense titles",
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).disabledColor,
-                    ),
-                  ),
-                ],
-              ),
+            return const CustomEmptyWidget(
+              type: EmptyStateType.fullScreen, // Screen အပြည့်ပြရန် သတ်မှတ်
+              title: "Your Cart is Empty",
+              message: "Bookmark expense items from the Home screen to add them here.",
+              icon: Icons.shopping_cart_outlined,
             );
           }
 
@@ -161,15 +151,13 @@ class CartScreen extends StatelessWidget {
           final Map<String, List<TitleEntity>> groupedItems = {};
 
           for (var title in cartItems) {
-            // Find which category this title belongs to
             final category = expenseCategories.firstWhere(
                   (cat) => cat.id == title.categoryId,
               orElse: () => CategoryEntity(
                   id: '',
                   name: 'Uncategorized',
                   createdAt: DateTime.now(),
-                  updatedAt: DateTime.now()
-              ),
+                  updatedAt: DateTime.now()),
             );
 
             if (category.id.isNotEmpty) {
@@ -213,8 +201,7 @@ class CartScreen extends StatelessWidget {
                     id: '',
                     name: 'Unknown Category',
                     createdAt: DateTime.now(),
-                    updatedAt: DateTime.now()
-                ),
+                    updatedAt: DateTime.now()),
               );
 
               final titles = groupedItems[categoryId]!;
@@ -243,7 +230,7 @@ class CartScreen extends StatelessWidget {
                     ),
                   ),
 
-                  // ListView for Titles with tap functionality
+                  // ListView for Titles
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -251,8 +238,8 @@ class CartScreen extends StatelessWidget {
                     itemBuilder: (context, i) => _buildCartListItem(
                       context,
                       titles[i],
-                      cartVM,
-                      onTap: () => _showAmountDialog(context, titles[i], cartVM),
+                      titleVM,
+                      onTap: () => _showAmountDialog(context, titles[i], titleVM),
                     ),
                   ),
 
@@ -266,12 +253,12 @@ class CartScreen extends StatelessWidget {
     );
   }
 
-  // ==================== Updated Cart List Item with onTap ====================
+  // ==================== Updated Cart List Item ====================
   Widget _buildCartListItem(
       BuildContext context,
       TitleEntity title,
-      CartViewModel cartVM,
-      {required VoidCallback onTap}
+      TitleViewModel titleVM, // 🔥 Updated
+          {required VoidCallback onTap}
       ) {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -290,24 +277,29 @@ class CartScreen extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        subtitle: LabelText(text: "Tap to add expense"),
+        subtitle: const LabelText(text: "Tap to add expense"),
         trailing: IconButton(
           icon: Icon(
             Icons.remove_circle_outline,
             color: colorScheme.error,
           ),
-          onPressed: () => cartVM.removeFromCart(title.id),
+          // 🔥 Updated: Use TitleViewModel to remove
+          onPressed: () => titleVM.toggleTitleCart('expense', title.id, false),
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        onTap: onTap, // Added onTap functionality for amount dialog
-        onLongPress: () => _showRemoveDialog(context, title, cartVM),
+        onTap: onTap,
+        onLongPress: () => _showRemoveDialog(context, title, titleVM),
       ),
     );
   }
 
-  void _showRemoveDialog(BuildContext context, TitleEntity title, CartViewModel cartVM) {
+  void _showRemoveDialog(
+      BuildContext context,
+      TitleEntity title,
+      TitleViewModel titleVM
+      ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -320,7 +312,8 @@ class CartScreen extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () {
-              cartVM.removeFromCart(title.id);
+              // 🔥 Updated
+              titleVM.toggleTitleCart('expense', title.id, false);
               Navigator.of(context).pop();
             },
             style: FilledButton.styleFrom(
@@ -333,7 +326,11 @@ class CartScreen extends StatelessWidget {
     );
   }
 
-  void _showClearCartDialog(BuildContext context, CartViewModel cartVM) {
+  void _showClearCartDialog(
+      BuildContext context,
+      TitleViewModel titleVM,
+      List<TitleEntity> cartItems
+      ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -346,7 +343,10 @@ class CartScreen extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () {
-              cartVM.clearCart();
+              // 🔥 Updated: Loop through and clear
+              for (var item in cartItems) {
+                titleVM.toggleTitleCart('expense', item.id, false);
+              }
               Navigator.of(context).pop();
             },
             style: FilledButton.styleFrom(

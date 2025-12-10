@@ -9,7 +9,7 @@ class TitleRepositoryImpl implements TitleRepository {
   TitleRepositoryImpl(this.remoteDataSource);
 
   TitleModel _toModel(TitleEntity e) =>
-      TitleModel(id: e.id, name: e.name, categoryId: e.categoryId, bookmark: e.bookmark);
+      TitleModel(id: e.id, name: e.name, categoryId: e.categoryId, bookmark: e.bookmark, cart: e.cart);
 
   @override
   Future<void> createTitle(
@@ -24,7 +24,7 @@ class TitleRepositoryImpl implements TitleRepository {
   Future<List<TitleEntity>> getTitles(String userId, String type) async {
     final models = await remoteDataSource.getTitles(userId, type);
     return models
-        .map((e) => TitleEntity(id: e.id, name: e.name, categoryId: e.categoryId, bookmark: e.bookmark))
+        .map((e) => TitleEntity(id: e.id, name: e.name, categoryId: e.categoryId, bookmark: e.bookmark, cart: e.cart))
         .toList();
   }
 
@@ -46,7 +46,7 @@ class TitleRepositoryImpl implements TitleRepository {
   Stream<List<TitleEntity>> listenTitles(String userId, String type) {
     return remoteDataSource.listenTitles(userId, type).map((models) {
       return models
-          .map((e) => TitleEntity(id: e.id, name: e.name, categoryId: e.categoryId, bookmark: e.bookmark))
+          .map((e) => TitleEntity(id: e.id, name: e.name, categoryId: e.categoryId, bookmark: e.bookmark, cart: e.cart))
           .toList();
     });
   }

@@ -20,8 +20,8 @@ class CreateTitleUseCase {
       id: '',
       name: name,
       categoryId: categoryId,
-      // bookmark သည် default အားဖြင့် false ဖြစ်သည်
       bookmark: false,
+      cart: false,
     );
 
     return repository.createTitle(userId, type, newTitle);

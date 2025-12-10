@@ -1,14 +1,19 @@
+import 'package:chashview/presentation/viewmodels/admin_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/auth_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/budget_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/cart_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/category_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/currency_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/expense_viewmodel.dart';
+import 'package:chashview/presentation/viewmodels/plan_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/splash_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/income_viewmodel.dart';
+import 'package:chashview/presentation/viewmodels/subscription_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/summary_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/target_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/title_viewmodel.dart';
+import 'package:chashview/presentation/viewmodels/top_up_viewmodel.dart';
+import 'package:chashview/presentation/viewmodels/transaction_viewmodel.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart'; // [NEW] kIsWeb သုံးဖို့ ဒါကို import လုပ်ရပါမယ်
 import 'package:flutter/material.dart';
@@ -49,7 +54,12 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => di.sl<BudgetViewModel>()),
         ChangeNotifierProvider(create: (_) => di.sl<TargetViewModel>()),
         ChangeNotifierProvider(create: (_) => di.sl<SummaryViewModel>()),
-        ChangeNotifierProvider(create: (_) => CartViewModel()),
+        ChangeNotifierProvider(create: (_) => di.sl<PlanViewModel>()),
+        ChangeNotifierProvider(create: (_) => di.sl<TopUpViewModel>()),
+        ChangeNotifierProvider(create: (_) => di.sl<TransactionViewModel>()),
+        ChangeNotifierProvider(create: (_) => di.sl<SubscriptionViewModel>()),
+        ChangeNotifierProvider(create: (_) => di.sl<AdminViewModel>()),
+
       ],
       child: MaterialApp(
         title: 'Cash View',

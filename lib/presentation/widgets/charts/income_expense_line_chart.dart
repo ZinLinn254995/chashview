@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -85,8 +84,6 @@ class _IncomeExpenseLineChartState extends State<IncomeExpenseLineChart> {
         initialVisibleMaximum: initialVisibleMax,
 
         labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
-        plotOffsetEnd: 20,
-        plotOffsetStart: 20,
       ),
       primaryYAxis: NumericAxis(
         axisLine: const AxisLine(width: 0),
@@ -137,7 +134,7 @@ class _IncomeExpenseLineChartState extends State<IncomeExpenseLineChart> {
           ),
           emptyPointSettings: EmptyPointSettings(
             mode: EmptyPointMode.zero,
-            color: Colors.grey.withOpacity(0.5),
+            color: Colors.grey.withValues(alpha: 0.5),
           ),
         ),
         LineSeries<DailySummaryData, DateTime>(
@@ -156,7 +153,7 @@ class _IncomeExpenseLineChartState extends State<IncomeExpenseLineChart> {
           ),
           emptyPointSettings: EmptyPointSettings(
             mode: EmptyPointMode.zero,
-            color: Colors.grey.withOpacity(0.5),
+            color: Colors.grey.withValues(alpha: 0.5),
           ),
         ),
       ],
@@ -231,9 +228,7 @@ class _IncomeExpenseLineChartState extends State<IncomeExpenseLineChart> {
       case TimeRangeTab.allTime:
         periodText = dateFormat.format(dailyData.date);
         break;
-      default:
-        periodText = DateFormat('MMM d, yyyy').format(dailyData.date);
-    }
+      }
 
     return Container(
       padding: const EdgeInsets.all(8),
@@ -243,7 +238,7 @@ class _IncomeExpenseLineChartState extends State<IncomeExpenseLineChart> {
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

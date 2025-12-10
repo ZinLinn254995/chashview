@@ -1,13 +1,19 @@
+import 'package:chashview/presentation/screens/admin/plan_management_screen.dart';
+import 'package:chashview/presentation/screens/admin/top_up_management_screen.dart';
 import 'package:chashview/presentation/screens/cart/cart_screen.dart';
 import 'package:chashview/presentation/screens/profile/profile_screen.dart';
+import 'package:chashview/presentation/screens/profile/redeem_screen.dart';
 import 'package:flutter/material.dart';
 import '../../core/routing/route_names.dart';
 import '../../presentation/main_app_content.dart'; // Main Wrapper
+import '../../presentation/screens/admin/admin_dashboard_screen.dart';
+import '../../presentation/screens/admin/user_management_screen.dart';
 import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/income/income_by_title_screen.dart';
 import '../../presentation/screens/lesson/lesson_one.dart';
 import '../../presentation/screens/settings/settings_screen.dart';
 import '../../presentation/screens/splash/splash_screen.dart';
+import '../../presentation/screens/summary/base_detail_screen.dart';
 
 class AppRouter {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
@@ -34,6 +40,30 @@ class AppRouter {
 
       case RouteNames.cart:
         return MaterialPageRoute(builder: (_) => const CartScreen());
+
+      case RouteNames.netBalanceDetail:
+        return MaterialPageRoute(builder: (_) => const NetBalanceDetailScreen());
+
+      case RouteNames.incomeDetail:
+        return MaterialPageRoute(builder: (_) => const IncomeDetailScreen());
+
+      case RouteNames.expenseDetail:
+        return MaterialPageRoute(builder: (_) => const ExpenseDetailScreen());
+
+      case RouteNames.userManagement:
+        return MaterialPageRoute(builder: (_) => const UserManagementScreen());
+
+      case RouteNames.adminDashboard:
+        return MaterialPageRoute(builder: (_) => const AdminDashboardScreen());
+
+      case RouteNames.planManagement:
+        return MaterialPageRoute(builder: (_) => const PlanManagementScreen());
+
+      case RouteNames.topUpManagement:
+        return MaterialPageRoute(builder: (_) => const TopUpManagementScreen());
+
+      case RouteNames.redeem:
+        return MaterialPageRoute(builder: (_) => const RedeemScreen());
 
 
       // 🔥 Income By Title (Detail Page)

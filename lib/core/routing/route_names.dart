@@ -15,5 +15,13 @@ class RouteNames {
   static const String cart = '/cart';
   static const String incomeByTitle = '/income_by_title';
   static const String fullComparisonChart = '/fullComparisonChart';
+  static const String netBalanceDetail = '/net-balance-detail';
+  static const String incomeDetail = '/income-detail';
+  static const String expenseDetail = '/expense-detail';
+  static const String adminDashboard = '/adminDashboard';
+  static const String userManagement = '/userManagement';
+  static const String planManagement = '/planManagement';
+  static const String topUpManagement = '/topUpManagement';
+  static const String redeem = '/redeem';
 
 }

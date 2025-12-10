@@ -1,3 +1,4 @@
+/*
 // cart_viewmodel.dart - simple version
 import 'package:flutter/foundation.dart';
 import 'package:collection/collection.dart';
@@ -46,4 +47,4 @@ class CartViewModel extends ChangeNotifier {
     final grouped = groupBy(_cartItems, (title) => title.categoryId);
     return grouped;
   }
-}
+}*/

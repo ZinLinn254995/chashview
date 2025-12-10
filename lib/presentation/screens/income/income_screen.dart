@@ -32,7 +32,7 @@ class _IncomeScreenState extends State<IncomeScreen>
     with AutomaticKeepAliveClientMixin {
   // Constants
   static const _kScreenTitle = "Income";
-  static const _kCategoriesTitle = "INCOMES BY CATEGORIES";
+  static const _kCategoriesTitle = "INCOMES BY CATEGORY";
 
   // State variables
   late TimeRangeTab _selectedTab;
@@ -432,7 +432,7 @@ class _IncomeScreenState extends State<IncomeScreen>
     return SliverPersistentHeader(
       pinned: true,
       delegate: _StickyHeaderDelegate(
-        height: kToolbarHeight + 50, // appbar height + tab height
+        height: kToolbarHeight + 100, // appbar height + tab height
         child: Container(
           color: colorScheme.surface,
           padding: const EdgeInsets.symmetric(horizontal: AppPadding.md),
@@ -465,6 +465,18 @@ class _IncomeScreenState extends State<IncomeScreen>
               TimeRangeTabWidget(
                 selectedTab: _selectedTab,
                 onTabSelected: _onTabSelected,
+              ),
+              const SizedBox(height: 8),
+              DateRangePicker(
+                selectedTab: _selectedTab,
+                selectedDate: _selectedDate,
+                selectedMonth: _selectedMonth,
+                selectedYear: _selectedYear,
+                selectedRange: _selectedRange,
+                onDateChanged: _onDateChanged,
+                onMonthChanged: _onMonthChanged,
+                onYearChanged: _onYearChanged,
+                onRangeChanged: _onRangeChanged,
               ),
             ],
           ),
@@ -501,33 +513,11 @@ class _IncomeScreenState extends State<IncomeScreen>
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(
-              vertical: AppPadding.sm,
+              vertical: AppPadding.md,
               horizontal: AppPadding.md,
             ),
-            child: Column(
-              children: [
-                DateRangePicker(
-                  selectedTab: _selectedTab,
-                  selectedDate: _selectedDate,
-                  selectedMonth: _selectedMonth,
-                  selectedYear: _selectedYear,
-                  selectedRange: _selectedRange,
-                  onDateChanged: _onDateChanged,
-                  onMonthChanged: _onMonthChanged,
-                  onYearChanged: _onYearChanged,
-                  onRangeChanged: _onRangeChanged,
-                ),
-                Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                ),
-                AppGap.md,
-                _buildSummaryContent(),
-              ],
-            ),
+            child: _buildSummaryContent(),
           ),
-          AppGap.sm,
         ],
       ),
     );
@@ -857,6 +847,7 @@ class _IncomeScreenState extends State<IncomeScreen>
           onPressed: _onFabPressed,
           backgroundColor: Theme.of(context).colorScheme.secondary,
           foregroundColor: Theme.of(context).colorScheme.onSecondary,
+          heroTag: null,
           child: const Icon(Icons.add),
         ),
       ),

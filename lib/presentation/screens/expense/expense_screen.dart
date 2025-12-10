@@ -502,7 +502,7 @@ class _ExpenseScreenState extends State<ExpenseScreen>
     return SliverPersistentHeader(
       pinned: true,
       delegate: _StickyHeaderDelegate(
-        height: kToolbarHeight + 50, // appbar height + tab height
+        height: kToolbarHeight + 100, // appbar height + tab height
         child: Container(
           color: colorScheme.surface,
           padding: const EdgeInsets.symmetric(horizontal: AppPadding.md),
@@ -535,6 +535,18 @@ class _ExpenseScreenState extends State<ExpenseScreen>
               TimeRangeTabWidget(
                 selectedTab: _selectedTab,
                 onTabSelected: _onTabSelected,
+              ),
+              const SizedBox(height: 8),
+              DateRangePicker(
+                selectedTab: _selectedTab,
+                selectedDate: _selectedDate,
+                selectedMonth: _selectedMonth,
+                selectedYear: _selectedYear,
+                selectedRange: _selectedRange,
+                onDateChanged: _onDateChanged,
+                onMonthChanged: _onMonthChanged,
+                onYearChanged: _onYearChanged,
+                onRangeChanged: _onRangeChanged,
               ),
             ],
           ),
@@ -570,33 +582,11 @@ class _ExpenseScreenState extends State<ExpenseScreen>
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(
-              vertical: AppPadding.sm,
+              vertical: AppPadding.md,
               horizontal: AppPadding.md,
             ),
-            child: Column(
-              children: [
-                DateRangePicker(
-                  selectedTab: _selectedTab,
-                  selectedDate: _selectedDate,
-                  selectedMonth: _selectedMonth,
-                  selectedYear: _selectedYear,
-                  selectedRange: _selectedRange,
-                  onDateChanged: _onDateChanged,
-                  onMonthChanged: _onMonthChanged,
-                  onYearChanged: _onYearChanged,
-                  onRangeChanged: _onRangeChanged,
-                ),
-                Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                ),
-                AppGap.md,
-                _buildSummaryContent(),
-              ],
-            ),
+            child: _buildSummaryContent(),
           ),
-          AppGap.sm,
         ],
       ),
     );
@@ -869,6 +859,7 @@ class _ExpenseScreenState extends State<ExpenseScreen>
           onPressed: _onFabPressed, // Calls the Bottom Sheet menu
           backgroundColor: Theme.of(context).colorScheme.tertiary, // Use tertiary color for expense
           foregroundColor: Theme.of(context).colorScheme.onTertiary,
+          heroTag: null,
           child: const Icon(Icons.add),
         ),
       ),

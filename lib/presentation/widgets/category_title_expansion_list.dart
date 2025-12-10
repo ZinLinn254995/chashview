@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../domain/entities/category_entity.dart';
 import '../../../domain/entities/title_entity.dart';
-import '../viewmodels/cart_viewmodel.dart';
 import '../viewmodels/category_viewmodel.dart';
+import '../viewmodels/title_viewmodel.dart';
 import 'category_dialog.dart';
 import 'currency_text.dart';
 
@@ -77,7 +77,7 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
     // Calculate Grand Total
     final double grandTotal = items.fold(
       0.0,
-      (sum, item) => sum + getAmount(item),
+          (sum, item) => sum + getAmount(item),
     );
 
     // Prepare Data
@@ -93,14 +93,14 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
 
       final double categoryTotalAmount = categoryItems.fold(
         0.0,
-        (sum, item) => sum + getAmount(item),
+            (sum, item) => sum + getAmount(item),
       );
 
       return (
-        category: category,
-        titles: categoryTitles,
-        items: categoryItems,
-        totalAmount: categoryTotalAmount,
+      category: category,
+      titles: categoryTitles,
+      items: categoryItems,
+      totalAmount: categoryTotalAmount,
       );
     }).toList();
 
@@ -112,7 +112,6 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
       shrinkWrap: true,
       itemCount: sortedData.length,
       separatorBuilder: (context, index) => AppGap.sm,
-      // Gap between cards
       itemBuilder: (context, index) {
         final data = sortedData[index];
         final category = data.category;
@@ -146,16 +145,11 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
 
         return Slidable(
           key: ValueKey(category.id),
-          // Performance အတွက် Key ထည့်ပေးတာ ကောင်းပါတယ်
 
-          // ဘယ်ဘက်ကို ပွတ်ဆွဲရင် ပေါ်လာမယ့် Action Pane (Right Side)
           endActionPane: ActionPane(
             motion: const ScrollMotion(),
-            // Animation ပုံစံ
             extentRatio: 0.4,
-            // Card အကျယ်ရဲ့ ဘယ်လောက်ထိ ဆွဲလို့ရမလဲ (0.4 = 40%)
             children: [
-              // Edit Button
               SlidableAction(
                 onPressed: (context) {
                   showDialog(
@@ -175,12 +169,10 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
                   bottomLeft: Radius.circular(16),
                 ),
               ),
-              // Delete Button
               SlidableAction(
                 onPressed: (context) async {
                   debugPrint("🔄 Delete button pressed for: ${category.name}");
 
-                  // 🔥 FIX: Store context and ViewModel reference BEFORE opening dialog
                   final categoryVM = context.read<CategoryViewModel>();
                   final scaffoldMessenger = ScaffoldMessenger.of(context);
 
@@ -192,7 +184,6 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
                     onConfirm: () async {
                       debugPrint("✅ User confirmed deletion");
                       try {
-                        // Get all item IDs to delete
                         final List<String> itemIdsToDelete = data.items.map((item) => getItemId(item)).toList();
 
                         debugPrint("📋 Items to delete: $itemIdsToDelete");
@@ -200,7 +191,6 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
 
                         debugPrint("🔄 Calling deleteCategoryWithCascade...");
 
-                        // 🔥 FIX: Use the pre-stored ViewModel reference
                         await categoryVM.deleteCategoryWithCascade(
                           type: isExpense ? 'expense' : 'income',
                           categoryId: category.id,
@@ -210,22 +200,20 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
 
                         debugPrint("✅ Delete operation completed");
 
-                        // 🔥 FIX: Use the pre-stored ScaffoldMessenger
                         scaffoldMessenger.showSnackBar(
                           SnackBar(
                             content: Text("'${category.name}' deleted successfully"),
                             backgroundColor: Colors.green,
-                            duration: Duration(seconds: 3),
+                            duration: const Duration(seconds: 3),
                           ),
                         );
                       } catch (e) {
                         debugPrint("❌ Error in onConfirm: $e");
-                        // 🔥 FIX: Use the pre-stored ScaffoldMessenger
                         scaffoldMessenger.showSnackBar(
                           SnackBar(
                             content: Text("Delete failed: $e"),
                             backgroundColor: Colors.red,
-                            duration: Duration(seconds: 5),
+                            duration: const Duration(seconds: 5),
                           ),
                         );
                       }
@@ -250,7 +238,7 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             margin: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12), // Rounded corners
+              borderRadius: BorderRadius.circular(12),
               side: BorderSide(
                 color: hasCategoryData
                     ? colorScheme.outlineVariant.withValues(alpha: 0.5)
@@ -271,15 +259,12 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
               backgroundColor: Colors.transparent,
               collapsedBackgroundColor: Colors.transparent,
 
-              // ✅ 1. Leading Icon for Category
               leading: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: iconBackgroundColor,
                   shape: BoxShape.circle,
                 ),
-                // Note: If your CategoryEntity has an icon field, use it here.
-                // Example: Icon(category.iconData ?? Icons.category_rounded, ...)
                 child: Icon(
                   isExpense
                       ? Icons.pie_chart_outline_rounded
@@ -303,7 +288,6 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  // Percentage Badge
                   if (hasCategoryData)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -341,7 +325,6 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
 
-                  // ✅ 2. Visual Progress Bar
                   if (hasCategoryData)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(2),
@@ -357,7 +340,6 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
 
                   const SizedBox(height: 8),
 
-                  // ✅ 3. Info Icons (Titles & Records)
                   Row(
                     children: [
                       _buildInfoIcon(
@@ -379,7 +361,6 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
               ),
 
               children: [
-                // Divider separating category and titles
                 Divider(
                   height: 1,
                   color: colorScheme.outlineVariant.withValues(alpha: 0.5),
@@ -409,23 +390,17 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
                     ),
                   )
                 else
-                  ...categoryTitles.map((title) {
-                    final titleItems = items
-                        .where((i) => getTitleId(i) == title.id)
-                        .toList();
-                    final titleTotalAmount = titleItems.fold(
-                      0.0,
-                      (sum, item) => sum + getAmount(item),
-                    );
+                  ..._getSortedTitles(categoryTitles, items).map((titleData) {
+                    final title = titleData.title;
+                    final titleTotalAmount = titleData.totalAmount;
                     final bool hasTitleData = titleTotalAmount > 0;
 
-                    // Styling
                     final Color titleContentColor = hasTitleData
                         ? colorScheme.onSurface
                         : colorScheme.onSurfaceVariant;
 
                     return Container(
-                      color: colorScheme.surface, // Clean white/dark background
+                      color: colorScheme.surface,
                       child: ListTile(
                         dense: true,
                         contentPadding: const EdgeInsets.only(
@@ -435,12 +410,9 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
                           bottom: 2,
                         ),
 
-                        // ✅ 4. Bookmark as Leading Action
-                        // category_title_expansion_list.dart - fixed version
                         leading: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // ✅ Bookmark Icon
                             IconButton(
                               icon: Icon(
                                 title.bookmark
@@ -461,31 +433,37 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
 
                             AppGap.sm,
 
-                            // ✅ Add to Cart Icon - Expense Type အတွက်ပဲပြမယ်
-                            if (type == TransactionType.expense) // 🔥 Only show for expense
-                              Consumer<CartViewModel>(
-                                builder: (context, cartVM, child) {
-                                  final isInCart = cartVM.isInCart(title.id);
+                            if (type == TransactionType.expense)
+                              Builder(
+                                builder: (context) {
+                                  final titleVM = context.read<TitleViewModel>();
+                                  final bool isInCart = title.cart;
+                                  final typeString = 'expense';
+
                                   return IconButton(
                                     icon: Icon(
-                                      isInCart ? Icons.shopping_cart : Icons.shopping_cart_outlined,
+                                      isInCart
+                                          ? Icons.shopping_cart
+                                          : Icons.shopping_cart_outlined,
                                       color: isInCart ? Colors.orange : colorScheme.outline,
                                       size: 20,
                                     ),
                                     onPressed: () {
-                                      // 🔥 Fix: Only pass title, no category name needed
-                                      cartVM.toggleCart(title);
+                                      titleVM.toggleTitleCart(
+                                        typeString,
+                                        title.id,
+                                        !isInCart,
+                                      );
 
-                                      // Optional: Show snackbar feedback
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
                                           backgroundColor: Colors.orange,
                                           content: Text(
                                             isInCart
-                                                ? "Removed from cart"
-                                                : "Added to cart",
+                                                ? "'${title.name}' removed from cart"
+                                                : "'${title.name}' added to cart",
                                           ),
-                                          duration: Duration(seconds: 1),
+                                          duration: const Duration(seconds: 1),
                                         ),
                                       );
                                     },
@@ -549,13 +527,35 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
     );
   }
 
-  // Helper Widget for small info icons
+  // 🔥 NEW: Title sorting method - Amount အများဆုံးကို ထိပ်ဆုံးမှာပြမယ်
+  List<({TitleEntity title, double totalAmount})> _getSortedTitles(
+      List<TitleEntity> categoryTitles,
+      List<T> items) {
+
+    final List<({TitleEntity title, double totalAmount})> titleData = [];
+
+    for (final title in categoryTitles) {
+      final titleItems = items.where((i) => getTitleId(i) == title.id).toList();
+      final titleTotalAmount = titleItems.fold(
+        0.0,
+            (sum, item) => sum + getAmount(item),
+      );
+
+      titleData.add((title: title, totalAmount: titleTotalAmount));
+    }
+
+    // Sort by total amount descending (အများဆုံးက ထိပ်ဆုံးမှာ)
+    titleData.sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
+
+    return titleData;
+  }
+
   Widget _buildInfoIcon(
-    BuildContext context,
-    IconData icon,
-    String label,
-    Color color,
-  ) {
+      BuildContext context,
+      IconData icon,
+      String label,
+      Color color,
+      ) {
     return Row(
       children: [
         Icon(icon, size: 14, color: color.withValues(alpha: 0.7)),
@@ -572,8 +572,6 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
     );
   }
 
-  // 🔥 Strict Delete Dialog
-  // 🔥 Improved Strict Delete Dialog
   Future<void> _showStrictDeleteDialog({
     required BuildContext context,
     required String categoryName,

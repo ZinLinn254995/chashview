@@ -17,13 +17,11 @@ class TitleViewModel extends ChangeNotifier {
   final DeleteTitleUseCase deleteTitleUseCase;
   final ListenTitlesUseCase listenTitlesUseCase;
 
-  // 🔥 Change 1: List နှစ်ခုခွဲလိုက်ပါ (CategoryViewModel ကဲ့သို့)
   List<TitleEntity> incomeTitles = [];
   List<TitleEntity> expenseTitles = [];
 
   bool isLoading = false;
 
-  // Streams
   StreamSubscription<List<TitleEntity>>? _incomeSub;
   StreamSubscription<List<TitleEntity>>? _expenseSub;
 
@@ -36,7 +34,6 @@ class TitleViewModel extends ChangeNotifier {
     required this.listenTitlesUseCase,
   }) {
     authViewModel.onUserChanged.addListener(_handleUserChanged);
-    // 🔥 Change 2: App စစချင်း User ရှိရင် Stream ဖွင့်မယ်
     if (authViewModel.user != null) {
       _initStreams();
     }
@@ -53,7 +50,6 @@ class TitleViewModel extends ChangeNotifier {
     }
   }
 
-  // 🔥 Change 3: Stream တွေကို တပြိုင်နက် Listen လုပ်မယ်
   void _initStreams() {
     _cancelStreams();
     final uid = authViewModel.user?.uid;
@@ -62,14 +58,12 @@ class TitleViewModel extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
-    // Listen Income Titles
     _incomeSub = listenTitlesUseCase.call(uid, 'income').listen((list) {
       incomeTitles = list;
       isLoading = false;
       notifyListeners();
     });
 
-    // Listen Expense Titles
     _expenseSub = listenTitlesUseCase.call(uid, 'expense').listen((list) {
       expenseTitles = list;
       isLoading = false;
@@ -82,7 +76,6 @@ class TitleViewModel extends ChangeNotifier {
     _expenseSub?.cancel();
   }
 
-  // Method to get specific list
   List<TitleEntity> getTitlesByType(String type) {
     return type == 'income' ? incomeTitles : expenseTitles;
   }
@@ -92,7 +85,6 @@ class TitleViewModel extends ChangeNotifier {
     final uid = authViewModel.user?.uid;
     if (uid == null) return;
 
-    // Check duplicates in specific list
     final targetList = type == 'income' ? incomeTitles : expenseTitles;
     if (targetList.any((t) => t.name.toLowerCase() == name.toLowerCase())) return;
 
@@ -104,7 +96,6 @@ class TitleViewModel extends ChangeNotifier {
     );
   }
 
-  // ✅ ADD THIS: General update method for renaming
   Future<void> updateTitle({
     required String type,
     required TitleEntity title,
@@ -130,9 +121,6 @@ class TitleViewModel extends ChangeNotifier {
     }
   }
 
-  // ... (Update, Delete, ToggleBookmark functions remain mostly same but use type to navigate logic if needed,
-  // though Stream handles the UI update automatically)
-
   Future<void> toggleTitleBookmark(String type, String titleId, bool isBookmark) async {
     final uid = authViewModel.user?.uid;
     if (uid == null) return;
@@ -146,7 +134,20 @@ class TitleViewModel extends ChangeNotifier {
     }
   }
 
-  // TitleViewModel ထဲမှာ ဒီ method ကို ထပ်ထည့်ပါ
+  // 🔥 NEW: Added Cart Toggle Logic Here
+  Future<void> toggleTitleCart(String type, String titleId, bool isCart) async {
+    final uid = authViewModel.user?.uid;
+    if (uid == null) return;
+
+    final targetList = type == 'income' ? incomeTitles : expenseTitles;
+    final index = targetList.indexWhere((t) => t.id == titleId);
+
+    if (index != -1) {
+      final updatedTitle = targetList[index].copyWith(cart: isCart);
+      await updateTitleUseCase.call(userId: uid, type: type, title: updatedTitle);
+    }
+  }
+
   Future<void> deleteTitleWithCascade({
     required String type,
     required String titleId,
@@ -162,29 +163,19 @@ class TitleViewModel extends ChangeNotifier {
       final dbRef = FirebaseDatabase.instance.ref();
       Map<String, dynamic> updates = {};
 
-      // ၁။ Title ကို ဖျက်ရန်
       final String titlePath = 'users/$uid/${type}Titles/$titleId';
       updates[titlePath] = null;
 
-      // ၂။ Related Items (Income/Expense) များကို ဖျက်ရန်
-      final String itemRoot = type; // 'income' or 'expense'
+      final String itemRoot = type;
 
       for (var itemId in relatedItemIds) {
         updates['users/$uid/$itemRoot/$itemId'] = null;
       }
 
-      // ၃။ Batch update လုပ်ခြင်း
-      debugPrint("🗑️ Batch deleting title: $titleId");
-      debugPrint("🗑️ Related items to delete: ${relatedItemIds.length}");
-      debugPrint("🗑️ Batch updates: $updates");
-
       await dbRef.update(updates);
 
-      debugPrint("✅ Title cascade delete completed successfully");
-
-    } catch (e, stackTrace) {
+    } catch (e) {
       debugPrint("❌ Title Cascade Delete Error: $e");
-      debugPrint("Stack Trace: $stackTrace");
       rethrow;
     } finally {
       isLoading = false;
