@@ -522,11 +522,11 @@ class _ExpenseScreenState extends State<ExpenseScreen>
                       ),
                     ),
                   ),
-                  IconButton(
+                  /*IconButton(
                     icon: const Icon(Icons.settings),
                     color: colorScheme.onSurface,
                     onPressed: _onSettingsPressed,
-                  ),
+                  ),*/
                 ],
               ),
               // Spacer

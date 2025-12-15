@@ -126,7 +126,7 @@ abstract class BaseDetailScreenState<T extends BaseDetailScreen> extends State<T
               ],
             ),
             subtitle: Text(
-              '${data.transactionCount} transactions',
+              '${data.transactionCount} records',
               style: TextStyle(
                 color: Colors.grey.withValues(alpha: 0.7),
                 fontSize: 12,
@@ -164,7 +164,7 @@ class NetBalanceDetailScreen extends BaseDetailScreen {
   const NetBalanceDetailScreen({super.key})
       : super(
     title: 'Net Balance Details',
-    primaryColor: const Color(0xFF6200EA),
+    primaryColor: const Color(0xFF0063B2),
     showOnlyNonZero: true, // 0 amount များကိုမပြရန်
   );
 
@@ -323,7 +323,7 @@ class _NetBalanceDetailScreenState extends BaseDetailScreenState<NetBalanceDetai
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${filteredData.fold(0, (sum, data) => sum + data.transactionCount)} transactions',
+                          '${filteredData.fold(0, (sum, data) => sum + data.transactionCount)} records',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 12,
@@ -378,7 +378,7 @@ class IncomeDetailScreen extends BaseDetailScreen {
   const IncomeDetailScreen({super.key})
       : super(
     title: 'Income Details',
-    primaryColor: const Color(0xFF43A047),
+    primaryColor: const Color(0xFF10B981),
     showOnlyNonZero: true, // 0 amount များကိုမပြရန်
   );
 
@@ -512,7 +512,7 @@ class _IncomeDetailScreenState extends BaseDetailScreenState<IncomeDetailScreen>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${filteredData.fold(0, (sum, data) => sum + data.transactionCount)} transactions',
+                          '${filteredData.fold(0, (sum, data) => sum + data.transactionCount)} records',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 12,
@@ -567,7 +567,7 @@ class ExpenseDetailScreen extends BaseDetailScreen {
   const ExpenseDetailScreen({super.key})
       : super(
     title: 'Expense Details',
-    primaryColor: const Color(0xFFFF5F00),
+    primaryColor: const Color(0xFFF59E0B),
     showOnlyNonZero: true, // 0 amount များကိုမပြရန်
   );
 
@@ -701,7 +701,7 @@ class _ExpenseDetailScreenState extends BaseDetailScreenState<ExpenseDetailScree
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${filteredData.fold(0, (sum, data) => sum + data.transactionCount)} transactions',
+                          '${filteredData.fold(0, (sum, data) => sum + data.transactionCount)} records',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 12,

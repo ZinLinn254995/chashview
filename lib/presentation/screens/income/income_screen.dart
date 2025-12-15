@@ -452,11 +452,11 @@ class _IncomeScreenState extends State<IncomeScreen>
                       ),
                     ),
                   ),
-                  IconButton(
+                  /*IconButton(
                     icon: const Icon(Icons.settings),
                     color: colorScheme.onSurface,
                     onPressed: _onSettingsPressed,
-                  ),
+                  ),*/
                 ],
               ),
               // Spacer

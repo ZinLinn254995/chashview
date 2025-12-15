@@ -122,42 +122,13 @@ class _RedeemScreenState extends State<RedeemScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Please enter the 12-digit code from your card or receipt to activate your subscription.",
+                        "Please enter the 8-digit code to activate Pro.",
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.hintColor,
                         ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 40),
-
-                      // 🔥 OPTIONAL: Show current user status
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "Current Status:",
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                            Chip(
-                              label: Text(
-                                authVM.currentUserStatusName,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              backgroundColor: authVM.getUserBadgeColor(),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
 
                       // Input Field
                       TextFormField(
@@ -168,7 +139,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
                         ),
                         decoration: InputDecoration(
                           labelText: "Redeem Code",
-                          hintText: "XXXX-XXXX-XXXX",
+                          hintText: "XXXX-XXXX",
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -210,7 +181,6 @@ class _RedeemScreenState extends State<RedeemScreen> {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: theme.colorScheme.primary,
-                            foregroundColor: theme.colorScheme.onPrimary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -227,9 +197,10 @@ class _RedeemScreenState extends State<RedeemScreen> {
                           )
                               : Text(
                             "REDEEM NOW",
-                            style: theme.textTheme.labelLarge?.copyWith(
+                            style: theme.textTheme.labelMedium?.copyWith(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onPrimary,
                             ),
                           ),
                         ),

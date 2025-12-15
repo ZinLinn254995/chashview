@@ -1,7 +1,6 @@
 import 'package:chashview/presentation/viewmodels/admin_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/auth_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/budget_viewmodel.dart';
-import 'package:chashview/presentation/viewmodels/cart_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/category_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/currency_viewmodel.dart';
 import 'package:chashview/presentation/viewmodels/expense_viewmodel.dart';

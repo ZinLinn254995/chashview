@@ -9,6 +9,7 @@ import '../viewmodels/category_viewmodel.dart';
 import '../viewmodels/title_viewmodel.dart';
 import 'category_dialog.dart';
 import 'currency_text.dart';
+import 'custom_empty_widget.dart';
 
 enum TransactionType { income, expense }
 
@@ -44,19 +45,21 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (categories.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.category_outlined,
-              size: 48,
-              color: Theme.of(context).colorScheme.outline,
+      return CustomEmptyWidget(  // ⬅ အသစ်ပြောင်းမယ်
+        title: "No Categories",
+        message: "Create your first category to get started",
+        icon: Icons.category_outlined,
+        type: EmptyStateType.section, // ဒါမှမဟုတ် EmptyStateType.section
+        onPressed: () {
+          // Optional: Add category dialog ခေါ်လို့ရတယ်
+          showDialog(
+            context: context,
+            builder: (context) => CategoryDialog(
+              type: type == TransactionType.expense ? 'expense' : 'income',
             ),
-            const SizedBox(height: 8),
-            const Text("No Categories Found"),
-          ],
-        ),
+          );
+        },
+        buttonText: "Add Category",
       );
     }
 
@@ -184,9 +187,10 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
                     onConfirm: () async {
                       debugPrint("✅ User confirmed deletion");
                       try {
-                        final List<String> itemIdsToDelete = data.items.map((item) => getItemId(item)).toList();
+                        // 🔥 ပြင်ဆင်ပြီး: itemIdsToDelete တွေကို ဖယ်ရှားလိုက်ပါပြီ။
+                        // final List<String> itemIdsToDelete = data.items.map((item) => getItemId(item)).toList();
+                        // debugPrint("📋 Items to delete: $itemIdsToDelete");
 
-                        debugPrint("📋 Items to delete: $itemIdsToDelete");
                         debugPrint("📋 Titles to delete: ${categoryTitles.map((t) => t.id).toList()}");
 
                         debugPrint("🔄 Calling deleteCategoryWithCascade...");
@@ -195,7 +199,8 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
                           type: isExpense ? 'expense' : 'income',
                           categoryId: category.id,
                           relatedTitles: categoryTitles,
-                          relatedItemIds: itemIdsToDelete,
+                          // 🔥 ပြင်ဆင်ပြီး: relatedItemIds parameter ကို ဖယ်ရှားလိုက်ပါပြီ။
+                          // relatedItemIds: itemIdsToDelete,
                         );
 
                         debugPrint("✅ Delete operation completed");
@@ -267,8 +272,8 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
                 ),
                 child: Icon(
                   isExpense
-                      ? Icons.pie_chart_outline_rounded
-                      : Icons.savings_outlined,
+                      ? Icons.arrow_downward_rounded
+                      : Icons.arrow_upward_rounded,
                   color: headerContentColor,
                   size: 24,
                 ),
@@ -601,6 +606,7 @@ class CategoryTitleExpansionList<T> extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
+              backgroundColor: Theme.of(context).colorScheme.surface,
               content: SingleChildScrollView(
                 child: Form(
                   key: formKey,

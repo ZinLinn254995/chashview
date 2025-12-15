@@ -166,7 +166,7 @@ class _PlanCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '${plan.price} MMK',
+                    '${plan.price} Baht',
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: colorScheme.onPrimaryContainer,
                       fontWeight: FontWeight.bold,

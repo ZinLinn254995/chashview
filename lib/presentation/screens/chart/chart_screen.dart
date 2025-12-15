@@ -97,7 +97,7 @@ class _ChartScreenState extends State<ChartScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     return Container(
-      height: kToolbarHeight + 50,
+      height: kToolbarHeight + 44,
       color: colorScheme.surface,
       padding: const EdgeInsets.symmetric(horizontal: AppPadding.md),
       alignment: Alignment.center,
@@ -116,11 +116,11 @@ class _ChartScreenState extends State<ChartScreen> {
                   ),
                 ),
               ),
-              IconButton(
+              /*IconButton(
                 icon: const Icon(Icons.settings),
                 color: colorScheme.onSurface,
                 onPressed: _onSettingsPressed,
-              ),
+              ),*/
             ],
           ),
           const SizedBox(height: 8),

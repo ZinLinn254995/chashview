@@ -163,70 +163,11 @@ class CategoryViewModel extends ChangeNotifier {
   }
 
 
-  /*Future<void> deleteCategoryWithCascade({
-    required String type,
-    required String categoryId,
-    required List<TitleEntity> relatedTitles,
-    required List<String> relatedItemIds,
-  }) async {
-    final uid = authViewModel.user?.uid;
-    if (uid == null) return;
-
-    isLoading = true;
-    notifyListeners();
-
-    try {
-      final dbRef = FirebaseDatabase.instance.ref();
-
-      // Debug prints
-      debugPrint("=== Starting Cascade Delete ===");
-      debugPrint("User UID: $uid");
-      debugPrint("Category ID: $categoryId");
-      debugPrint("Type: $type");
-      debugPrint("Titles to delete: ${relatedTitles.length}");
-      debugPrint("Items to delete: ${relatedItemIds.length}");
-
-      // ၁။ Related Items (Income/Expense) များကို ဖျက်ခြင်း
-      final String itemRoot = type == 'income' ? 'income' : 'expense';
-
-      for (var itemId in relatedItemIds) {
-        final itemPath = 'users/$uid/$itemRoot/$itemId';
-        debugPrint("Deleting item at: $itemPath");
-        await dbRef.child('users').child(uid).child(itemRoot).child(itemId).remove();
-      }
-
-      // ၂။ Related Titles များကို ဖျက်ခြင်း
-      final String titleRoot = type == 'income' ? 'incomeTitles' : 'expenseTitles';
-
-      for (var title in relatedTitles) {
-        final titlePath = 'users/$uid/$titleRoot/${title.id}';
-        debugPrint("Deleting title at: $titlePath");
-        await dbRef.child('users').child(uid).child(titleRoot).child(title.id).remove();
-      }
-
-      // ၃။ Category ကို ဖျက်ခြင်း
-      final categoryPath = 'users/$uid/categories/$type/$categoryId';
-      debugPrint("Deleting category at: $categoryPath");
-      await dbRef.child('users').child(uid).child('categories').child(type).child(categoryId).remove();
-
-      debugPrint("=== Cascade Delete Completed Successfully ===");
-
-    } catch (e, stackTrace) {
-      debugPrint("Cascading Delete Error: $e");
-      debugPrint("Stack Trace: $stackTrace");
-      // Error ကို rethrow လုပ်ပါ
-      rethrow;
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
-  }*/
-
   Future<void> deleteCategoryWithCascade({
-    required String type,
+    required String type, // 'income' or 'expense'
     required String categoryId,
     required List<TitleEntity> relatedTitles,
-    required List<String> relatedItemIds,
+    // required List<String> relatedItemIds, // ❌ UI က ID တွေ မယူတော့ဘူး
   }) async {
     final uid = authViewModel.user?.uid;
     if (uid == null) return;
@@ -236,34 +177,57 @@ class CategoryViewModel extends ChangeNotifier {
 
     try {
       final dbRef = FirebaseDatabase.instance.ref();
-
       Map<String, dynamic> updates = {};
 
-      // ၁။ Items များကို ဖျက်ရန်
-      final String itemPath = type == 'income'
+      // Path များကို ကြိုတင်သတ်မှတ်ခြင်း
+      final String transactionRootPath = type == 'income'
           ? FirebasePaths.income(uid)
           : FirebasePaths.expense(uid);
 
-      for (var itemId in relatedItemIds) {
-        updates['$itemPath/$itemId'] = null;
+      final String titleRootPath = type == 'income'
+          ? FirebasePaths.incomeTitles(uid)
+          : FirebasePaths.expenseTitles(uid);
+
+      final String categoryPath = FirebasePaths.category(uid, type, categoryId);
+
+      // 🔥 ၁။ Transaction Records အားလုံးကို Database မှ ရှာဖွေပြီး ဖျက်ရန် စာရင်းသွင်းခြင်း
+      // (UI က data မဟုတ်ဘဲ Database က data အစစ်ကို ရှာမယ့်အပိုင်း)
+
+      // Parallel Query လုပ်ခြင်း (Title တစ်ခုချင်းစီအတွက် Query တပြိုင်နက်ပစ်မယ်)
+      final List<Future<DataSnapshot>> queries = relatedTitles.map((title) {
+        return dbRef
+            .child(transactionRootPath)
+            .orderByChild('titleId')
+            .equalTo(title.id)
+            .get();
+      }).toList();
+
+      final List<DataSnapshot> snapshots = await Future.wait(queries);
+
+      // Query result တွေထဲက ID တွေကို ယူပြီး null (delete) လုပ်မယ်
+      for (final snapshot in snapshots) {
+        if (snapshot.exists) {
+          final data = snapshot.value as Map<dynamic, dynamic>;
+          data.forEach((key, value) {
+            // key သည် transaction ID ဖြစ်သည် (ဥပမာ: -OgH_kww_oSfJ3mUBIa3)
+            updates['$transactionRootPath/$key'] = null;
+          });
+        }
       }
 
-      // ၂။ Titles များကို ဖျက်ရန်
-      final String titlePath = 'users/$uid/${type}Titles';
-
+      // 🔥 ၂။ Titles များကို ဖျက်ရန် path ထည့်ခြင်း
       for (var title in relatedTitles) {
-        updates['$titlePath/${title.id}'] = null;
+        updates['$titleRootPath/${title.id}'] = null;
       }
 
-      // ၃။ Category ကို ဖျက်ရန်
-      final String categoryPath = 'users/$uid/categories/$type/$categoryId';
+      // 🔥 ၃။ Category ကို ဖျက်ရန် path ထည့်ခြင်း
       updates[categoryPath] = null;
 
-      // ၄။ Batch update လုပ်ခြင်း
-      debugPrint("Batch updates: $updates");
+      // 🔥 ၄။ အားလုံးကို တပြိုင်နက် Batch Delete လုပ်ခြင်း
+      debugPrint("Batch Deleting ${updates.length} paths...");
       await dbRef.update(updates);
 
-      debugPrint("=== Batch Delete Completed Successfully ===");
+      debugPrint("=== Batch Delete With Cascade Completed Successfully ===");
 
     } catch (e, stackTrace) {
       debugPrint("Batch Delete Error: $e");

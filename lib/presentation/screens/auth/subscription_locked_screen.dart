@@ -23,13 +23,9 @@ class SubscriptionLockedScreen extends StatelessWidget {
         _showFeedback(context, vm.successMessage!, Colors.green);
         vm.clearMessages();
 
-        // 🔥 အဆင့် ၁: User Data ကို Refresh လုပ်ခြင်း
         await authVM.refreshCurrentUser();
 
-        // 🔥 အဆင့် ၂: Refresh လုပ်ပြီးနောက် User Status ကို စစ်ဆေးပြီး Navigate လုပ်ခြင်း
-        // UserStatus.pro ဖြစ်သွားသည်ဟု ယူဆပါက Home Screen သို့ အစားထိုးပို့ဆောင်ခြင်း
         if (authVM.isProUser) {
-          // MainAppContent ကို navigate လုပ်ပါ
           Navigator.pushReplacementNamed(context, RouteNames.home);
         }
 
@@ -54,11 +50,9 @@ class SubscriptionLockedScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // AuthViewModel မှ User အခြေအနေကို ရယူပါ
     final authVM = context.watch<AuthViewModel>();
     final subVM = context.watch<SubscriptionViewModel>();
 
-    // အခြေအနေအလိုက် Content များကို တွက်ချက်ပါ
     final content = _getContentForUserStatus(authVM);
 
     return Scaffold(
@@ -93,7 +87,7 @@ class SubscriptionLockedScreen extends StatelessWidget {
                     // 2. Dynamic Title
                     Text(
                       content.headline,
-                      style: theme.textTheme.headlineSmall?.copyWith(
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.onSurface,
                       ),
@@ -104,7 +98,7 @@ class SubscriptionLockedScreen extends StatelessWidget {
                     // 3. Dynamic Description
                     Text(
                       content.description,
-                      style: theme.textTheme.bodyLarge?.copyWith(
+                      style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.hintColor,
                       ),
                       textAlign: TextAlign.center,
@@ -113,33 +107,6 @@ class SubscriptionLockedScreen extends StatelessWidget {
 
                     // 4. Action Buttons (Suspended ဖြစ်နေရင် မပြပါ)
                     if (content.canPurchase) ...[
-                      // BNPL Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: ElevatedButton.icon(
-                          onPressed: subVM.isLoading ? null : () => _activateBnpl(context),
-                          icon: subVM.isLoading
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Icon(Icons.flash_on),
-                          label: Text(
-                            "BNPL 1 လစာ ချက်ချင်း ဖွင့်ရန်",
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: theme.colorScheme.onPrimary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: theme.colorScheme.primary,
-                            elevation: 4,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
 
                       // Redeem Code Button
                       SizedBox(
@@ -166,15 +133,32 @@ class SubscriptionLockedScreen extends StatelessWidget {
                         ),
                       ),
 
-                      const SizedBox(height: 30),
-
-                      // Premium Benefits
-                      Text('Premium အသုံးပြုခွင့် ရရှိမည့် အကျိုးကျေးဇူးများ:',
-                          style: theme.textTheme.bodyMedium),
-                      const SizedBox(height: 10),
-                      _buildBenefitRow(context, Icons.storage, 'အကန့်အသတ်မရှိ စာရင်းသွင်းခြင်း'),
-                      _buildBenefitRow(context, Icons.cloud_sync, 'Cloud ပေါ်တွင် အချက်အလက် ထပ်တူပြုခြင်း'),
-                      _buildBenefitRow(context, Icons.picture_as_pdf, 'PDF/CSV Export လုပ်နိုင်ခြင်း'),
+                      const SizedBox(height: 16),
+                      // BNPL Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: ElevatedButton.icon(
+                          onPressed: subVM.isLoading ? null : () => _activateBnpl(context),
+                          icon: subVM.isLoading
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : const Icon(Icons.flash_on),
+                          label: Text(
+                            "ရက်(၃၀) ကြိုတင်အသုံးပြုခွင့်ကို ရယူမည်",
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: theme.colorScheme.onPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.colorScheme.primary,
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
                     ] else ...[
                       // Suspended ဖြစ်နေရင် Contact Support Button သီးသန့်ပြမည်
                       _buildContactSupportButton(context, theme),
@@ -242,7 +226,7 @@ class SubscriptionLockedScreen extends StatelessWidget {
         title: 'Trial Ended',
         icon: Icons.timer_off_outlined,
         headline: "စမ်းသပ်အသုံးပြုခွင့် ကုန်ဆုံးသွားပါပြီ",
-        description: "ဆက်လက်အသုံးပြုလိုပါက Premium Plan ကို ဝယ်ယူပြီး အကန့်အသတ်မရှိ လုပ်ဆောင်ချက်များကို ရယူလိုက်ပါ။",
+        description: "ဆက်လက်အသုံးပြုလိုပါက Pro Plan ကို ဝယ်ယူပြီး အကန့်အသတ်မရှိ လုပ်ဆောင်ချက်များကို ရယူလိုက်ပါ။",
         isError: false,
         canPurchase: true,
       );
@@ -256,20 +240,6 @@ class SubscriptionLockedScreen extends StatelessWidget {
       description: "ဤဝန်ဆောင်မှုကို ရယူရန် Subscription လိုအပ်ပါသည်။",
       isError: false,
       canPurchase: true,
-    );
-  }
-
-  Widget _buildBenefitRow(BuildContext context, IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 8),
-          Text(text, style: Theme.of(context).textTheme.bodyLarge),
-        ],
-      ),
     );
   }
 

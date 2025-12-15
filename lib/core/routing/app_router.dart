@@ -3,10 +3,10 @@ import 'package:chashview/presentation/screens/admin/top_up_management_screen.da
 import 'package:chashview/presentation/screens/cart/cart_screen.dart';
 import 'package:chashview/presentation/screens/profile/profile_screen.dart';
 import 'package:chashview/presentation/screens/profile/redeem_screen.dart';
+import 'package:chashview/presentation/screens/profile/upgrade_pro_screen.dart';
 import 'package:flutter/material.dart';
 import '../../core/routing/route_names.dart';
-import '../../presentation/main_app_content.dart'; // Main Wrapper
-import '../../presentation/screens/admin/admin_dashboard_screen.dart';
+import '../../presentation/main_app_content.dart';
 import '../../presentation/screens/admin/user_management_screen.dart';
 import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/income/income_by_title_screen.dart';
@@ -53,9 +53,6 @@ class AppRouter {
       case RouteNames.userManagement:
         return MaterialPageRoute(builder: (_) => const UserManagementScreen());
 
-      case RouteNames.adminDashboard:
-        return MaterialPageRoute(builder: (_) => const AdminDashboardScreen());
-
       case RouteNames.planManagement:
         return MaterialPageRoute(builder: (_) => const PlanManagementScreen());
 
@@ -64,6 +61,9 @@ class AppRouter {
 
       case RouteNames.redeem:
         return MaterialPageRoute(builder: (_) => const RedeemScreen());
+
+      case RouteNames.upgradePro:
+        return MaterialPageRoute(builder: (_) => const UpgradeProScreen());
 
 
       // 🔥 Income By Title (Detail Page)

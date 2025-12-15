@@ -1,3 +1,4 @@
+import 'package:chashview/core/constants/app_sizes.dart';
 import 'package:chashview/presentation/widgets/currency_text.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -56,10 +57,6 @@ class _SummaryScreenState extends State<SummaryScreen>
     _selectedMonth = DateTime(now.year, now.month);
     _selectedYear = DateTime(now.year);
     _selectedRange = null;
-  }
-
-  void _onSettingsPressed() {
-    // TODO: Settings Screen သို့ သွားရန် Logic
   }
 
   // --- Event Handlers ---
@@ -681,7 +678,7 @@ class _SummaryScreenState extends State<SummaryScreen>
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     return Container(
-      height: kToolbarHeight + 100,
+      height: kToolbarHeight + 86,
       color: colorScheme.surface,
       padding: const EdgeInsets.symmetric(horizontal: _kAppPaddingMd),
       alignment: Alignment.center,
@@ -700,11 +697,11 @@ class _SummaryScreenState extends State<SummaryScreen>
                   ),
                 ),
               ),
-              IconButton(
+              /*IconButton(
                 icon: const Icon(Icons.settings),
                 color: colorScheme.onSurface,
                 onPressed: _onSettingsPressed,
-              ),
+              ),*/
             ],
           ),
           const SizedBox(height: 8),
@@ -1008,8 +1005,17 @@ class _SummaryScreenState extends State<SummaryScreen>
                     // Income Categories
                     _buildCategoryList(
                       context,
-                      'Income Categories',
+                      'Income By Categories',
                       incomeCategories,
+                      totalIncome,
+                      colorScheme.secondary,
+                    ),
+
+                    // Income Titles
+                    _buildTitleList(
+                      context,
+                      'Income By Titles',
+                      incomeTitles,
                       totalIncome,
                       colorScheme.secondary,
                     ),
@@ -1017,25 +1023,15 @@ class _SummaryScreenState extends State<SummaryScreen>
                     // Expense Categories
                     _buildCategoryList(
                       context,
-                      'Expense Categories',
+                      'Expense By Categories',
                       expenseCategories,
                       totalExpense,
                       colorScheme.tertiary,
                     ),
-
-                    // Income Titles
-                    _buildTitleList(
-                      context,
-                      'Income Titles',
-                      incomeTitles,
-                      totalIncome,
-                      colorScheme.secondary,
-                    ),
-
                     // Expense Titles
                     _buildTitleList(
                       context,
-                      'Expense Titles',
+                      'Expense By Titles',
                       expenseTitles,
                       totalExpense,
                       colorScheme.tertiary,

@@ -328,69 +328,169 @@ class _BookmarkedGroupedGrid extends StatelessWidget {
 
   const _BookmarkedGroupedGrid({required this.type});
 
-  // ... (_showAmountDialog function is same as before) ...
   Future<void> _showAmountDialog(BuildContext context, TitleEntity title) async {
-    // (ယခင် code အတိုင်းထားပါ)
     final TextEditingController controller = TextEditingController();
     final colorScheme = Theme.of(context).colorScheme;
+    final String transactionType = 'expense'; // expense အတွက်သာ cart logic ထည့်မှာမို့လို့
+
+    DateTime selectedDate = DateTime.now();
 
     final double? amount = await showDialog<double>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(
-              type == 'income' ? Icons.add_circle : Icons.remove_circle,
-              color: type == 'income'
-                  ? colorScheme.secondary
-                  : colorScheme.tertiary,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title.name,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-          ],
-        ),
-        content: TextField(
-          controller: controller,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: "Amount",
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            filled: true,
-            fillColor: colorScheme.surfaceContainer,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
-          ),
-          FilledButton(
-            onPressed: () {
-              final text = controller.text.trim();
-              final value = double.tryParse(text);
-              if (value != null && value > 0) {
-                Navigator.pop(ctx, value);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Please enter a valid amount")),
+      builder: (ctx) => StatefulBuilder(
+        builder: (innerCtx, setState) {
+          final bool isExpense = type == transactionType; // ပြန်စစ်ဆေး
+
+          // 💡 EXPENSE အတွက်သာ Add to Cart Button ကို ထည့်သွင်းခြင်း
+          final Widget cartButtonRow = isExpense
+              ? Builder(
+              builder: (context) {
+                final titleVM = context.read<TitleViewModel>();
+                final bool isInCart = title.cart;
+
+                // 🎯 FilledButton.icon အစား IconButton ကို အသုံးပြုခြင်း
+                return IconButton(
+                  // ℹ️ tooltip ကို စာသားအစားထိုး အသုံးပြုခြင်း
+                  tooltip: isInCart ? "Remove from Cart" : "Add to Cart",
+                  icon: Icon(
+                    isInCart
+                        ? Icons.shopping_cart
+                        : Icons.shopping_cart_outlined,
+                    // 🎨 Icon ၏အရောင်ကို ပြောင်းလဲခြင်း
+                    color: isInCart ? Colors.orange : Colors.orange,
+                    size: 24, // 🗜️ Icon အရွယ်အစားကို ချိန်ညှိနိုင်သည်
+                  ),
+                  onPressed: () {
+                    // Cart အခြေအနေကို ပြောင်းလဲခြင်း
+                    titleVM.toggleTitleCart(
+                      transactionType,
+                      title.id,
+                      !isInCart,
+                    );
+
+                    // 📣 SnackBar ပြသပြီး Dialog ပိတ်ခြင်း
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        backgroundColor: isInCart ? Colors.red : Colors.orange,
+                        content: Text(
+                          isInCart
+                              ? "'${title.name}' removed from cart"
+                              : "'${title.name}' added to cart",
+                        ),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+
+                    Navigator.pop(ctx, null);
+                  },
                 );
-              }
-            },
-            child: const Text("Save"),
-          ),
-        ],
+              })
+              : const SizedBox.shrink(); // income ဆိုရင် ဘာမှမပြ
+
+          return AlertDialog(
+            backgroundColor: colorScheme.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+
+            // ⚠️ title ကိုသာပြပြီး content ကို Column နဲ့ ပေါင်းလိုက်မယ်
+            title: Row(
+              children: [
+                Icon(
+                  type == 'income' ? Icons.add_circle : Icons.remove_circle,
+                  color: type == 'income'
+                      ? colorScheme.secondary
+                      : colorScheme.tertiary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                // 🎯 Cart Button Row ကို title အောက်တွင် ထည့်သွင်းခြင်း
+                if (isExpense) cartButtonRow,
+              ],
+            ),
+
+            // 💡 Content အစား Column ကို သုံးပြီး Cart Button, Amount, Date များကို စီစဉ်ခြင်း
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 1. Amount ထည့်သွင်းသည့် နေရာ
+                TextField(
+                  controller: controller,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: "Amount",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: colorScheme.surfaceContainer,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 2. Date ရွေးချယ်သည့် နေရာ (Select Date Widget)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Date:',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(
+                        '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      onPressed: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: innerCtx,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now(),
+                        );
+
+                        if (picked != null && picked != selectedDate) {
+                          setState(() {
+                            selectedDate = picked;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("Cancel"),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final text = controller.text.trim();
+                  final value = double.tryParse(text);
+                  if (value != null && value > 0) {
+                    Navigator.pop(ctx, value);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Please enter a valid amount")),
+                    );
+                  }
+                },
+                child: const Text("Save"),
+              ),
+            ],
+          );
+        },
       ),
     );
 
+    // --- ဒေတာ သိမ်းဆည်းခြင်း အပိုင်း (Dialog ပိတ်ပြီးနောက်) ---
     if (amount != null && context.mounted) {
       if (type == 'income') {
         final incomeVM = context.read<IncomeViewModel>();
@@ -398,7 +498,7 @@ class _BookmarkedGroupedGrid extends StatelessWidget {
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           titleId: title.id,
           amount: amount,
-          date: DateTime.now(),
+          date: selectedDate,
           createdAt: DateTime.now(),
         );
         await incomeVM.addIncome(newIncome);
@@ -408,7 +508,7 @@ class _BookmarkedGroupedGrid extends StatelessWidget {
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           titleId: title.id,
           amount: amount,
-          date: DateTime.now(),
+          date: selectedDate,
           createdAt: DateTime.now(),
         );
         await expenseVM.addExpense(newExpense);
@@ -418,7 +518,7 @@ class _BookmarkedGroupedGrid extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "${type == 'income' ? '+' : '-'} ${amount.toStringAsFixed(2)} • ${title.name}",
+              "${type == 'income' ? '+' : '-'} ${amount.toStringAsFixed(2)} • ${title.name} (${selectedDate.day}/${selectedDate.month})",
             ),
             backgroundColor: type == 'income' ? Colors.green : Colors.red,
           ),

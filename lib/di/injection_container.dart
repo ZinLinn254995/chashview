@@ -293,7 +293,7 @@ Future<void> init() async {
   );
 
   // ===== SPLASH MODULE =====
-  sl.registerFactory(() => SplashViewModel(getCurrentUserUseCase: sl()));
+  sl.registerFactory(() => SplashViewModel(getCurrentUserUseCase: sl(), updateUserFieldUseCase: sl(),));
 
   // Currency
   sl.registerLazySingleton<CurrencyService>(() => CurrencyService());
