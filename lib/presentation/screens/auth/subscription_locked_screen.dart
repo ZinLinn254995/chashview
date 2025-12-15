@@ -46,6 +46,39 @@ class SubscriptionLockedScreen extends StatelessWidget {
     );
   }
 
+  // Add this method:
+  void _confirmAndSignOut(BuildContext context) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true && context.mounted) {
+      final authVM = context.read<AuthViewModel>();
+      await authVM.signOut();
+
+      // 🔥 FORCE navigation to Login screen
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        RouteNames.login, // Make sure this route exists
+            (route) => false, // Remove all previous routes
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -63,7 +96,7 @@ class SubscriptionLockedScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
-            onPressed: () => authVM.signOut(),
+            onPressed: () => _confirmAndSignOut(context),
           ),
         ],
       ),

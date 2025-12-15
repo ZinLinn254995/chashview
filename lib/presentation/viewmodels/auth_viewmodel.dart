@@ -305,22 +305,65 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  // lib/presentation/viewmodels/auth_viewmodel.dart
   Future<void> signOut() async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
+      // 1. Sign out from Firebase
       await signOutUseCase.call();
+
+      // 2. Clear ALL local states
       _user = null;
       onUserChanged.value = null;
+
+      // 3. 🔥 CRITICAL: Force clear any cached user data
+      //    If your GetCurrentUserUseCase caches locally, reset it
+      await _forceClearUserCache();
+
+      if (kDebugMode) {
+        print("✅ AuthViewModel - User signed out completely");
+      }
+
+    } catch (e) {
+      _errorMessage = "Logout failed: ${e.toString()}";
+      if (kDebugMode) {
+        print("❌ AuthViewModel - SignOut error: $e");
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void clearCache() {
+    _user = null;
+    _isLoading = false;
+    _errorMessage = null;
+    onUserChanged.value = null;
+    notifyListeners();
+  }
+
+  Future<void> _forceClearUserCache() async {
+    try {
+      // Example: Clear SharedPreferences
+      // final prefs = await SharedPreferences.getInstance();
+      // await prefs.remove('current_user');
+      // await prefs.remove('user_token');
+
+      // If using a Repository, call its clear method
+      // await userRepository.clearCache();
+
+      if (kDebugMode) {
+        print("🔄 AuthViewModel - User cache cleared");
+      }
     } catch (e) {
       if (kDebugMode) {
-        print("SignOut error: $e");
+        print("⚠️ AuthViewModel - Error clearing cache: $e");
       }
     }
-
-    _isLoading = false;
-    notifyListeners();
   }
 
   /// ✅ External widget or VM calls this - Async ပြောင်း

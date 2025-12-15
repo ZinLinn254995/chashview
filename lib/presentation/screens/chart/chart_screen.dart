@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_sizes.dart';
-import '../../../core/routing/route_names.dart';
-import '../../viewmodels/auth_viewmodel.dart'; // 🔥 FIX: Import AuthViewModel
+import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/summary_viewmodel.dart';
 import '../../widgets/charts/comparison_chart.dart';
 import '../../widgets/charts/income_expense_line_chart.dart';
@@ -42,10 +41,10 @@ class _ChartScreenState extends State<ChartScreen> {
 
   @override
   void dispose() {
-    // 🔥 FIX: Listener ကို ပြန်ဖြုတ်ပေးရပါမယ် (Memory Leak မဖြစ်အောင်)
     context.read<AuthViewModel>().removeListener(_onAuthUpdated);
     super.dispose();
   }
+
 
   // 🔥 FIX: Auth ပြောင်းလဲမှုရှိတိုင်း ခေါ်မည့် Function
   void _onAuthUpdated() {
@@ -68,10 +67,6 @@ class _ChartScreenState extends State<ChartScreen> {
   void _onTabSelected(TimeRangeTab tab) {
     setState(() => _selectedTab = tab);
     _updateChartSubscription();
-  }
-
-  void _onSettingsPressed() {
-    Navigator.pushNamed(context, RouteNames.settings);
   }
 
   void _updateChartSubscription() {

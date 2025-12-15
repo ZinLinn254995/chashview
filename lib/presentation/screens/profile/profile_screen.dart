@@ -154,7 +154,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
 
             // BNPL Status
-            _buildDetailRow(
+            /*_buildDetailRow(
               context,
               icon: user.hasActiveBnplDebt
                   ? Icons.money_off_csred
@@ -164,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? 'အသုံးပြုထားပါသည်'
                   : 'အသုံးမပြုထားပါ',
               valueColor: user.hasActiveBnplDebt ? Colors.red : Colors.green,
-            ),
+            ),*/
 
             // Subscription End Date
             if (user.subscriptionEnd != null) ...[

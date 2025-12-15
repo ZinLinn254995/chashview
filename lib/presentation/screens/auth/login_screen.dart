@@ -1,34 +1,31 @@
-import 'package:chashview/core/constants/app_sizes.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart'; // FontAwesome for Google Icon if needed, or use Image asset
-import '../../../core/constants/app_assets.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_assets.dart';
+import '../../../domain/entities/user_entity.dart';
 import '../../main_app_content.dart';
 import '../../viewmodels/auth_viewmodel.dart';
+import '../auth/subscription_locked_screen.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final authVM = Provider.of<AuthViewModel>(context);
-
-    // App's Primary Color (Based on your splash screen color)
-    const Color primaryColor = Color(0xFF0063B2);
+    final authVM = context.watch<AuthViewModel>();
 
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
-          // Background ကို Gradient အရောင်ပြေးလေး ထည့်ထားပါတယ်
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
               AppColors.splash,
-              AppColors.splash, // Darker shade of blue
+              Color(0xFF004D99),
             ],
           ),
         ),
@@ -44,26 +41,32 @@ class LoginScreen extends StatelessWidget {
               children: [
                 const Spacer(flex: 2),
 
-                // --- Logo Section ---
-                // Logo ပုံထည့်ပါ (Shadow လေးထည့်ပေးထားလို့ ကြွတက်နေမှာပါ)
+                // Logo Section
                 Container(
                   padding: const EdgeInsets.all(16),
+                  /*decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),*/
                   child: Image.asset(
-                    AppAssets.appIcon,
+                    AppAssets.logo,
                     width: 80,
                     height: 80,
                     errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.attach_money, size: 60, color: primaryColor),
+                    const Icon(
+                      Icons.attach_money,
+                      size: 60,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
 
-                AppGap.sm,
 
                 // App Name
                 const Text(
                   'CashView',
                   style: TextStyle(
-                    fontSize: 32,
+                    fontSize: 36,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                     letterSpacing: 1.2,
@@ -72,47 +75,29 @@ class LoginScreen extends StatelessWidget {
 
                 const SizedBox(height: 8),
 
-                // Tagline (Street Food vendors အတွက် ရည်ရွယ်ကြောင်း)
+                // Tagline
                 Text(
                   'Manage your street food business\nsmartly & easily.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.white.withOpacity(0.8),
+                    height: 1.4,
                   ),
                 ),
 
                 const Spacer(flex: 2),
 
-                // --- Google Login Button ---
-                // Card ပုံစံနဲ့ သေသပ်အောင် လုပ်ထားပါတယ်
+                // Google Login Button
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: () async {
-                      await authVM.signInWithGoogle();
-                      if (!context.mounted) return;
-                      if (authVM.user != null) {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const MainAppContent(),
-                          ),
-                        );
-                      } else if (authVM.errorMessage != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(authVM.errorMessage!),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    },
+                    onPressed: () => _handleGoogleLogin(context, authVM),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
-                      foregroundColor: primaryColor,
-                      elevation: 5,
+                      foregroundColor: AppColors.splash,
+                      elevation: 4,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -121,7 +106,7 @@ class LoginScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Image.asset(
-                          AppAssets.googleLogo, // assets/images/google_logo.png
+                          AppAssets.googleLogo,
                           width: 24,
                           height: 24,
                         ),
@@ -143,21 +128,39 @@ class LoginScreen extends StatelessWidget {
                 // Error Message Display
                 if (authVM.errorMessage != null)
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.red.withOpacity(0.3),
+                        width: 1,
+                      ),
                     ),
-                    child: Text(
-                      authVM.errorMessage!,
-                      style: const TextStyle(color: Colors.white),
-                      textAlign: TextAlign.center,
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            authVM.errorMessage!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
                 const Spacer(flex: 1),
 
-                // Footer Version Text (Optional)
+                // Footer Text
                 Text(
                   'Version 1.0.0',
                   style: TextStyle(
@@ -169,6 +172,100 @@ class LoginScreen extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleGoogleLogin(
+      BuildContext context,
+      AuthViewModel authVM,
+      ) async {
+    try {
+      await authVM.signInWithGoogle();
+
+      if (!context.mounted) return;
+
+      if (authVM.user != null) {
+        // 🔥 CRITICAL: Check user status AFTER login
+        // Wait for AuthViewModel to fully refresh
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // Force refresh user data
+        await authVM.refreshCurrentUser();
+
+        if (!context.mounted) return;
+
+        // Check user status and navigate accordingly
+        if (_shouldNavigateToLocked(authVM)) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const SubscriptionLockedScreen(),
+            ),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const MainAppContent(),
+            ),
+          );
+        }
+      } else if (authVM.errorMessage != null) {
+        _showErrorSnackbar(context, authVM.errorMessage!);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Login error: $e');
+      }
+      _showErrorSnackbar(context, 'Login failed. Please try again.');
+    }
+  }
+
+  bool _shouldNavigateToLocked(AuthViewModel authVM) {
+    if (authVM.user == null) return false;
+
+    final user = authVM.user!;
+    final now = DateTime.now();
+
+    // 1. Suspended or Expired status
+    if (user.status == UserStatus.suspended ||
+        user.status == UserStatus.expired) {
+      return true;
+    }
+
+    // 2. Pro with expired subscription
+    if (user.status == UserStatus.pro &&
+        user.subscriptionEnd != null &&
+        now.isAfter(user.subscriptionEnd!)) {
+      return true;
+    }
+
+    // 3. Free with used trial
+    if (user.status == UserStatus.free && user.isTrialUsed) {
+      return true;
+    }
+
+    // 4. Free with expired trial
+    if (user.status == UserStatus.free &&
+        !user.isTrialUsed &&
+        now.isAfter(user.trialEndDate)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  void _showErrorSnackbar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
         ),
       ),
     );

@@ -29,34 +29,60 @@ class SplashViewModel extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    // Reset state
-    _navigation = SplashNavigation.none;
-    _loadingProgress = 0.0;
-    _loadingStep = 0;
-    _isLoadingComplete = false;
+    try {
+      _navigation = SplashNavigation.none;
+      _loadingProgress = 0.0;
+      _loadingStep = 0;
+      _isLoadingComplete = false;
 
-    await _simulateLoading();
-    await checkAuthentication();
+      await _simulateLoading();
+      await checkAuthentication();
 
-    _isLoadingComplete = true;
-    notifyListeners();
+      _isLoadingComplete = true;
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) print('Splash init error: $e');
+      _navigation = SplashNavigation.toLogin;
+      _isLoadingComplete = true;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _simulateLoading() async {
+    final steps = [
+      {'progress': 0.1, 'step': 0, 'message': 'Initializing app...'},
+      {'progress': 0.2, 'step': 1, 'message': 'Checking connectivity...'},
+      {'progress': 0.3, 'step': 2, 'message': 'Loading configurations...'},
+      {'progress': 0.4, 'step': 3, 'message': 'Preparing database...'},
+      {'progress': 0.5, 'step': 4, 'message': 'Checking authentication...'},
+    ];
+
+    for (final step in steps) {
+      await _updateProgress(
+        step['progress'] as double,
+        step['step'] as int,
+        step['message'] as String,
+      );
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
   }
 
   Future<void> checkAuthentication() async {
     try {
-      // Step 1: Get current user
       await _updateProgress(0.6, 5, 'Getting user information...');
+      await Future.delayed(const Duration(milliseconds: 200));
 
       final currentUser = await getCurrentUserUseCase.call();
 
       if (currentUser != null) {
-        // ✅ CRITICAL: Check and update status BEFORE deciding navigation
-        await _updateProgress(0.75, 6, 'Checking subscription status...');
+        await _updateProgress(0.75, 6, 'Verifying access permissions...');
+        await Future.delayed(const Duration(milliseconds: 150));
 
-        final updatedUser = await _checkAndUpdateUserStatus(currentUser);
+        // 🔥 CRITICAL: Verify user status before navigation
+        final verifiedUser = await _verifyUserAccess(currentUser);
 
-        // ✅ Use UPDATED user for access decision
-        if (_isAccessLocked(updatedUser)) {
+        // Use the VERIFIED user for access decision
+        if (_shouldLockAccess(verifiedUser)) {
           await _updateProgress(0.9, 8, 'Access verification completed...');
           _navigation = SplashNavigation.toLocked;
         } else {
@@ -68,11 +94,13 @@ class SplashViewModel extends ChangeNotifier {
         _navigation = SplashNavigation.toLogin;
       }
 
-      // Final step
       await _updateProgress(1.0, 9, 'Ready!');
+      await Future.delayed(const Duration(milliseconds: 200));
 
     } catch (e) {
-      if (kDebugMode) print('Splash auth check error: $e');
+      if (kDebugMode) {
+        print('❌ Splash auth check error: $e');
+      }
       await _updateProgress(0.9, 8, 'Error occurred, redirecting to login...');
       _navigation = SplashNavigation.toLogin;
     }
@@ -80,9 +108,9 @@ class SplashViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ✅ NEW: Check and update user status
-  Future<UserEntity> _checkAndUpdateUserStatus(UserEntity user) async {
+  Future<UserEntity> _verifyUserAccess(UserEntity user) async {
     final now = DateTime.now();
+    UserEntity updatedUser = user;
     bool needsUpdate = false;
     Map<String, dynamic> updates = {};
 
@@ -92,7 +120,7 @@ class SplashViewModel extends ChangeNotifier {
         user.status == UserStatus.pro) {
 
       if (kDebugMode) {
-        print('🔄 Splash: Subscription expired for user ${user.uid}');
+        print('🔄 Splash: PRO user subscription expired for ${user.email}');
       }
 
       needsUpdate = true;
@@ -102,7 +130,7 @@ class SplashViewModel extends ChangeNotifier {
     // 2. Check trial expiration
     if (now.isAfter(user.trialEndDate) && !user.isTrialUsed) {
       if (kDebugMode) {
-        print('🔄 Splash: Trial expired for user ${user.uid}');
+        print('🔄 Splash: Trial expired for ${user.email}');
       }
 
       needsUpdate = true;
@@ -114,36 +142,44 @@ class SplashViewModel extends ChangeNotifier {
       try {
         for (var entry in updates.entries) {
           await updateUserFieldUseCase.call(
-              user.uid,
-              entry.key,
-              entry.value
+            user.uid,
+            entry.key,
+            entry.value,
           );
+
           if (kDebugMode) {
             print('✅ Splash: Updated ${entry.key} to ${entry.value}');
           }
         }
 
-        // Return updated user object
-        return user.copyWith(
+        // Update local user object
+        updatedUser = user.copyWith(
           status: updates['status'] ?? user.status,
           isTrialUsed: updates['isTrialUsed'] ?? user.isTrialUsed,
         );
+
       } catch (e) {
         if (kDebugMode) {
-          print('❌ Splash: Error updating user status: $e');
+          print('⚠️ Splash: Error updating user status: $e');
         }
       }
     }
 
-    return user;
+    return updatedUser;
   }
 
-  bool _isAccessLocked(UserEntity user) {
+  bool _shouldLockAccess(UserEntity? user) {
+    if (user == null) {
+      // No user = go to login (not locked)
+      return false;
+    }
+
     final now = DateTime.now();
 
     if (kDebugMode) {
       print('''
 🔐 Splash - Access Check for ${user.email}:
+  UID: ${user.uid}
   Status: ${user.status}
   Is Pro: ${user.status == UserStatus.pro}
   Subscription End: ${user.subscriptionEnd}
@@ -154,32 +190,70 @@ class SplashViewModel extends ChangeNotifier {
 ''');
     }
 
-    // 1. PRO with ACTIVE subscription → ALLOW
+    // 🔥 STRICT LOCKING RULES - REVISED
+
+    // 1. SUSPENDED users → ALWAYS LOCKED
+    if (user.status == UserStatus.suspended) {
+      if (kDebugMode) print('🔒 LOCKED: User is suspended');
+      return true;
+    }
+
+    // 2. EXPIRED users → ALWAYS LOCKED
+    if (user.status == UserStatus.expired) {
+      if (kDebugMode) print('🔒 LOCKED: User status is expired');
+      return true;
+    }
+
+    // 3. PRO users with EXPIRED subscription → LOCKED
     if (user.status == UserStatus.pro) {
       if (user.subscriptionEnd == null) {
-        // Pro but no subscription date → LOCK (shouldn't happen)
-        return true;
+        if (kDebugMode) print('🔒 LOCKED: Pro user has no subscription date');
+        return true; // Pro without subscription date = lock
       }
-      return !user.subscriptionEnd!.isAfter(now); // Lock if expired
+
+      final isSubscriptionActive = user.subscriptionEnd!.isAfter(now);
+      if (!isSubscriptionActive) {
+        if (kDebugMode) print('🔒 LOCKED: Pro subscription expired');
+        return true;
+      } else {
+        if (kDebugMode) print('✅ ALLOWED: Pro with active subscription');
+        return false;
+      }
     }
 
-    // 2. FREE with ACTIVE trial → ALLOW
+    // 4. FREE users with UNUSED trial → Check trial period
     if (user.status == UserStatus.free && !user.isTrialUsed) {
-      return !now.isBefore(user.trialEndDate); // Lock if trial expired
+      final isTrialActive = now.isBefore(user.trialEndDate);
+      if (!isTrialActive) {
+        if (kDebugMode) print('🔒 LOCKED: Free trial expired');
+        return true;
+      } else {
+        if (kDebugMode) print('✅ ALLOWED: Free with active trial');
+        return false;
+      }
     }
 
-    // 3. All other cases → LOCK
+    // 5. FREE users with USED trial → LOCKED
+    if (user.status == UserStatus.free && user.isTrialUsed) {
+      if (kDebugMode) print('🔒 LOCKED: Free user trial already used');
+      return true;
+    }
+
+    // Default: LOCK for safety
+    if (kDebugMode) print('🔒 LOCKED: Default case (unknown status)');
     return true;
   }
 
-  // ... existing _simulateLoading, _updateProgress methods ...
-  Future<void> _simulateLoading() async { /* same as before */ }
-
-  Future<void> _updateProgress(double progress, int step, String message) async {
+  Future<void> _updateProgress(
+      double progress,
+      int step,
+      String message,
+      ) async {
     _loadingProgress = progress;
     _loadingStep = step;
     _loadingMessage = message;
     notifyListeners();
+
     await Future.delayed(const Duration(milliseconds: 50));
   }
 
@@ -188,5 +262,14 @@ class SplashViewModel extends ChangeNotifier {
       _navigation = SplashNavigation.none;
       notifyListeners();
     }
+  }
+
+  void reset() {
+    _navigation = SplashNavigation.none;
+    _loadingProgress = 0.0;
+    _loadingStep = 0;
+    _loadingMessage = 'Initializing...';
+    _isLoadingComplete = false;
+    notifyListeners();
   }
 }
