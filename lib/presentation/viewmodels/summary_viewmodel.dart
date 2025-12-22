@@ -93,6 +93,40 @@ class SummaryViewModel extends ChangeNotifier {
     }
   }
 
+  /// Manual Refresh ပြုလုပ်ရန်အတွက် function
+  Future<void> loadSummaries() async {
+    final userId = authViewModel.user?.uid;
+    if (userId == null) return;
+
+    // Cache များကို အရင်ရှင်းထုတ်ပါ
+    _cache.clear();
+
+    // UI မှာ loading ပြရန်
+    isLoading = true;
+    notifyListeners();
+
+    // အဓိက range များကို တစ်ပြိုင်နက် ပြန်လည် load လုပ်ပါ
+    // subscribe() က listen လုပ်ရုံသာမက _cache ထဲသို့လည်း data ထည့်သွင်းပေးပါသည်
+    await Future.wait([
+      Future.microtask(() => subscribe(SummaryTimeRange.daily)),
+      Future.microtask(() => subscribe(SummaryTimeRange.monthly)),
+      Future.microtask(() => subscribe(SummaryTimeRange.yearly)),
+      Future.microtask(() => subscribe(SummaryTimeRange.allTime)),
+    ]);
+
+    // Home Daily အတွက်ပါ refresh လုပ်ပေးရန်
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day);
+    final end = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+    subscribeWithRange(SummaryTimeRange.homeDaily, start, end);
+
+    // အနည်းဆုံး loading ခဏပြရန် (optional)
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    isLoading = false;
+    notifyListeners();
+  }
+
 
   void subscribeChartData(TimeRangeTab tab) {
     final userId = authViewModel.user?.uid;

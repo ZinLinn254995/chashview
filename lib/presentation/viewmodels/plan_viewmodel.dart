@@ -49,14 +49,19 @@ class PlanViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  // plan_viewmodel.dart ကို ပြင်ဆင်ရန်
   Future<void> selectPlan(String planId) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
       _selectedPlan = await getPlanByIdUseCase.call(planId);
+      print("Plan loaded successfully: ${_selectedPlan?.name}");
     } catch (e) {
       _errorMessage = 'Failed to load plan details: ${e.toString()}';
+      print("Error loading plan: $e");
+      _selectedPlan = null; // Clear if error
     }
 
     _isLoading = false;

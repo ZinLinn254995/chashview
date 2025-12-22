@@ -35,8 +35,10 @@ class DateRangePicker extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // Formatting Display Text
     String displayText;
+    bool isAllTime = selectedTab == TimeRangeTab.allTime;
+    bool hasRange = selectedRange != null;
+
     if (selectedTab == TimeRangeTab.daily) {
       displayText = DateFormat('dd-MMM-yyyy').format(selectedDate);
     } else if (selectedTab == TimeRangeTab.monthly) {
@@ -44,7 +46,7 @@ class DateRangePicker extends StatelessWidget {
     } else if (selectedTab == TimeRangeTab.yearly) {
       displayText = "${selectedYear.year}";
     } else {
-      if (selectedRange == null) {
+      if (!hasRange) {
         displayText = "All History";
       } else {
         String start = DateFormat('dd-MMM-yyyy').format(selectedRange!.start);
@@ -53,45 +55,63 @@ class DateRangePicker extends StatelessWidget {
       }
     }
 
-    // Check if navigation arrows should be enabled
-    final bool isNavEnabled = selectedTab != TimeRangeTab.allTime;
+    final bool isNavEnabled = !isAllTime;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Previous Arrow
         IconButton(
           icon: const Icon(Icons.chevron_left),
           onPressed: isNavEnabled ? () => _handleNavigation(-1) : null,
-          tooltip: "Previous",
-          color: colorScheme.onSurface,
+          color: isNavEnabled ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.3),
         ),
 
-        // Date Text (Clickable)
         Expanded(
           child: InkWell(
             onTap: () => _showPicker(context),
             borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Text(
-                displayText,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
-                ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      displayText,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  // All Time မှာ Range ရွေးထားရင် Clear Icon ပြပေးမယ်
+                  if (isAllTime && hasRange)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4.0),
+                      child: GestureDetector(
+                        onTap: () {
+                          // range ကို clear လုပ်ပေးလိုက်တာ
+                          onRangeChanged(null);
+                        },
+                        child: Icon(
+                          Icons.cancel,
+                          size: 18,
+                          color: colorScheme.error.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
         ),
 
-        // Next Arrow
         IconButton(
           icon: const Icon(Icons.chevron_right),
           onPressed: isNavEnabled ? () => _handleNavigation(1) : null,
-          tooltip: "Next",
-          color: colorScheme.onSurface,
+          color: isNavEnabled ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.3),
         ),
       ],
     );

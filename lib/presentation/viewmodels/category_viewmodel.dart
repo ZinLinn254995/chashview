@@ -44,6 +44,11 @@ class CategoryViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> loadCategories() async {
+    _initStreams();
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
+
   void _handleUserChanged() {
     if (authViewModel.user == null) {
       // User logout လုပ်သွားရင် Data ရှင်းပြီး Stream ရပ်မယ်

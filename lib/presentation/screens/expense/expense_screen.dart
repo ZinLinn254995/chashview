@@ -1,4 +1,6 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../domain/entities/category_entity.dart'; // Added CategoryEntity import for filtering
@@ -811,47 +813,74 @@ class _ExpenseScreenState extends State<ExpenseScreen>
     );
   }
 
+  // Data အားလုံးကို Refresh လုပ်ပေးမည့် logic
+  Future<void> _handleRefresh() async {
+
+    HapticFeedback.mediumImpact();
+
+    final expenseVM = Provider.of<ExpenseViewModel>(context, listen: false);
+    final categoryVM = Provider.of<CategoryViewModel>(context, listen: false);
+    final titleVM = Provider.of<TitleViewModel>(context, listen: false);
+
+    // Summary/Chart data update
+    _triggerSummaryUpdate();
+
+    // Stream connections များကို restart လုပ်ပြီး data အသစ်စစ်ဆေးခြင်း
+    await Future.wait([
+      expenseVM.loadExpenses(),
+      categoryVM.loadCategories(),
+      titleVM.loadTitles(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final colorScheme = Theme.of(context).colorScheme;
 
-    // Wrap in GestureDetector to hide keyboard on tap outside
     return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-      },
+      onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        backgroundColor: colorScheme.surface,
         body: SafeArea(
           child: CustomScrollView(
-            // Dismiss keyboard on scroll for better UX
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             slivers: [
-              // Section 1: Header + Charts
-              // NEW: Hide this section when search is expanded
+              // ၁။ Header Section (Pinned ဖြစ်နေမည်)
               if (!_isSearchExpanded)
-                SliverMainAxisGroup(
-                  slivers: [_buildHeader(context), _buildChartSection(context)],
-                ),
+                _buildHeader(context),
 
-              // Section 2: Categories (always visible)
-              SliverMainAxisGroup(
-                slivers: [
-                  _buildCategoriesHeader(context),
-                  _buildCategoriesList(),
-                  const SliverPadding(
-                    padding: EdgeInsets.only(bottom: 80),
-                  ),
-                ],
+              // ၂။ Refresh Control (Header အောက်မှ Spinner ထွက်လာစေရန်)
+              CupertinoSliverRefreshControl(
+                refreshTriggerPullDistance: 130.0,
+                refreshIndicatorExtent: 60.0,
+                onRefresh: _handleRefresh,
+              ),
+
+              // ၃။ Chart Section (မူလ Function)
+              if (!_isSearchExpanded)
+                _buildChartSection(context),
+
+              // ၄။ Categories Header (မူလ Function)
+              _buildCategoriesHeader(context),
+
+              // ၅။ Categories List (မူလ Function)
+              _buildCategoriesList(),
+
+              // Footer Padding
+              const SliverPadding(
+                padding: EdgeInsets.only(bottom: 80),
               ),
             ],
           ),
         ),
-        // FAB added for multiple actions
         floatingActionButton: FloatingActionButton(
-          onPressed: _onFabPressed, // Calls the Bottom Sheet menu
-          backgroundColor: Theme.of(context).colorScheme.tertiary, // Use tertiary color for expense
-          foregroundColor: Theme.of(context).colorScheme.onTertiary,
+          onPressed: _onFabPressed,
+          backgroundColor: colorScheme.tertiary,
+          foregroundColor: colorScheme.onTertiary,
           heroTag: null,
           child: const Icon(Icons.add),
         ),

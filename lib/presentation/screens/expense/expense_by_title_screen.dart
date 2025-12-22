@@ -1,6 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:intl/intl.dart'; // Date Formatting အတွက်
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_sizes.dart';
@@ -29,13 +30,23 @@ class ExpenseByTitleScreen extends StatefulWidget {
 class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
   bool _isDeleting = false;
 
+  // Data Refresh Logic
+  Future<void> _handleRefresh() async {
+    final expenseVM = context.read<ExpenseViewModel>();
+    final titleVM = context.read<TitleViewModel>();
+
+    await Future.wait([
+      expenseVM.loadExpenses(),
+      titleVM.loadTitles(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Consumer<TitleViewModel>(
       builder: (context, titleVM, _) {
-        // Find latest title state or fallback to passed title
         final currentTitle = titleVM.expenseTitles.firstWhere(
               (t) => t.id == widget.title.id,
           orElse: () => widget.title,
@@ -43,7 +54,6 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
 
         return Scaffold(
           backgroundColor: colorScheme.surface,
-          // AppBar ကို ရိုးရှင်းအောင် ပြောင်းလိုက်ပါပြီ
           appBar: AppBar(
             title: Text(
               currentTitle.name,
@@ -55,48 +65,69 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
             backgroundColor: colorScheme.surface,
             toolbarHeight: 60,
           ),
+          // RefreshIndicator ကို ဖယ်ထုတ်ပြီး CustomScrollView ထဲမှာ logic ထည့်ပါမယ်
           body: Consumer<ExpenseViewModel>(
             builder: (context, vm, child) {
-              // Filter and Sort Expenses
               final filteredExpenses = vm.expenses
                   .where((expense) => expense.titleId == widget.title.id)
                   .toList()
                 ..sort((a, b) => b.date.compareTo(a.date));
 
-              // Calculate Total Amount for visual summary
               final totalAmount = filteredExpenses.fold(0.0, (sum, item) => sum + item.amount);
 
-              return Column(
-                children: [
-                  // 🔹 Header Section (Actions & Summary)
-                  _buildHeaderSection(context, titleVM, currentTitle, totalAmount),
+              return CustomScrollView(
+                // BouncingScrollPhysics က iOS style ဆွဲရတာ ပိုအိစေပြီး Control လုပ်ရ ပိုကောင်းပါတယ်
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+                slivers: [
+                  // 🔹 Cupertino Refresh Control (ဒီနေရာမှာ အကွာအဝေးကို ထိန်းချုပ်ထားပါတယ်)
+                  CupertinoSliverRefreshControl(
+                    refreshTriggerPullDistance: 120.0, // ၁၂၀ အကွာအဝေးထိ ဆွဲချမှ အလုပ်လုပ်မှာပါ
+                    refreshIndicatorExtent: 60.0,      // လည်နေတဲ့ Spinner နေရာယူမယ့် အကျယ်
+                    onRefresh: _handleRefresh,
+                  ),
+
+                  // 🔹 Header Section
+                  SliverToBoxAdapter(
+                    child: _buildHeaderSection(context, titleVM, currentTitle, totalAmount),
+                  ),
 
                   // 🔹 List Section
-                  // ပြည့်စုံတဲ့ ပြင်ဆင်ပြီးသား code
-                  Expanded(
-                    child: filteredExpenses.isEmpty
-                        ? const _EmptyStateView()
-                        : ListView.separated(
+                  if (filteredExpenses.isEmpty)
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _EmptyStateView(),
+                    )
+                  else
+                    SliverPadding(
                       padding: const EdgeInsets.fromLTRB(AppPadding.md, 0, AppPadding.md, AppPadding.xl),
-                      itemCount: filteredExpenses.length,
-                      separatorBuilder: (_, __) {
-                        return Divider(
-                          height: 1,
-                          thickness: 0.5,
-                          color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
-                          indent: 16,
-                          endIndent: 16,
-                        );
-                      },
-                      itemBuilder: (context, index) {
-                        return _ExpenseListItem(
-                          expense: filteredExpenses[index],
-                          onEdit: () => _navigateToEditScreen(filteredExpenses[index]),
-                          onDelete: () => _confirmDeleteExpense(filteredExpenses[index]),
-                        );
-                      },
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                            final expense = filteredExpenses[index];
+                            final isLast = index == filteredExpenses.length - 1;
+
+                            return Column(
+                              children: [
+                                _ExpenseListItem(
+                                  expense: expense,
+                                  onEdit: () => _navigateToEditScreen(expense),
+                                  onDelete: () => _confirmDeleteExpense(expense),
+                                ),
+                                if (!isLast)
+                                  Divider(
+                                    height: 1,
+                                    thickness: 0.5,
+                                    color: Theme.of(context).colorScheme.outline.withAlpha(128),
+                                  ),
+                              ],
+                            );
+                          },
+                          childCount: filteredExpenses.length,
+                        ),
+                      ),
                     ),
-                  ),
                 ],
               );
             },
@@ -106,7 +137,6 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
     );
   }
 
-  // 🔹 NEW: Header Section with Buttons & Summary
   Widget _buildHeaderSection(
       BuildContext context,
       TitleViewModel titleVM,
@@ -127,7 +157,6 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
       ),
       child: Column(
         children: [
-          // Total Amount Display
           Text(
             "Total Expenses",
             style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
@@ -144,11 +173,9 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Action Buttons Row (Add, Bookmark, Cart, etc.)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              // Add Button (Prominent)
               _buildActionButton(
                 context,
                 icon: Icons.add_circle_rounded,
@@ -157,8 +184,6 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
                 onTap: () => _showAddAmountDialog(currentTitle),
                 isPrimary: true,
               ),
-
-              // Bookmark Button
               _buildActionButton(
                 context,
                 icon: isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
@@ -168,8 +193,6 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
                   titleVM.toggleTitleBookmark('expense', currentTitle.id, !isBookmarked);
                 },
               ),
-
-              // Cart Button
               _buildActionButton(
                 context,
                 icon: isInCart ? Icons.shopping_cart : Icons.shopping_cart_outlined,
@@ -179,8 +202,6 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
                   titleVM.toggleTitleCart('expense', currentTitle.id, !isInCart);
                 },
               ),
-
-              // Edit Button
               _buildActionButton(
                 context,
                 icon: Icons.edit_rounded,
@@ -188,14 +209,12 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
                 color: Colors.orange,
                 onTap: () => _showEditTitleDialog(titleVM, currentTitle),
               ),
-
-              // Delete Button
               _buildActionButton(
                 context,
                 icon: Icons.delete_forever_rounded,
                 label: "Delete title",
                 color: Colors.red,
-                onTap: () => _showDeleteTitleDialog(currentTitle, 'income'),
+                onTap: () => _showDeleteTitleDialog(currentTitle, 'expense'),
               ),
             ],
           ),
@@ -204,7 +223,6 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
     );
   }
 
-  // Helper for Circular Action Buttons
   Widget _buildActionButton(
       BuildContext context, {
         required IconData icon,
@@ -262,10 +280,8 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
     );
   }
 
-// 🔥 Delete Expense Logic (Async Safe)
   Future<void> _confirmDeleteExpense(ExpenseEntity expense) async {
     final expenseVM = context.read<ExpenseViewModel>();
-
     final confirm = await _showConfirmationDialog(
       title: "Delete Record",
       content: "Are you sure you want to delete this expense record?",
@@ -275,9 +291,7 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
 
     if (confirm == true) {
       await expenseVM.removeExpense(expense.id);
-
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Expense deleted successfully"),
@@ -289,11 +303,7 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
     }
   }
 
-  // ✏️ Edit Title Dialog (Async Safe)
-  Future<void> _showEditTitleDialog(
-      TitleViewModel titleVM,
-      TitleEntity currentTitle,
-      ) async {
+  Future<void> _showEditTitleDialog(TitleViewModel titleVM, TitleEntity currentTitle) async {
     final controller = TextEditingController(text: currentTitle.name);
     final formKey = GlobalKey<FormState>();
 
@@ -301,10 +311,7 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(
-            "Edit title",
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          title: Text("Edit title", style: Theme.of(context).textTheme.titleMedium),
           backgroundColor: Theme.of(context).colorScheme.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           content: Form(
@@ -313,27 +320,18 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
               controller: controller,
               autofocus: true,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: "Title Name",
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: "Title Name", border: OutlineInputBorder()),
               validator: (val) => val == null || val.trim().isEmpty ? "Required" : null,
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text("Cancel"),
-            ),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text("Cancel")),
             FilledButton(
               onPressed: () async {
                 if (formKey.currentState!.validate()) {
                   final newName = controller.text.trim();
                   if (newName != currentTitle.name) {
-                    await titleVM.updateTitle(
-                      type: 'expense',
-                      title: currentTitle.copyWith(name: newName),
-                    );
+                    await titleVM.updateTitle(type: 'expense', title: currentTitle.copyWith(name: newName));
                   }
                   if (dialogContext.mounted) Navigator.pop(dialogContext);
                 }
@@ -346,11 +344,7 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
     );
   }
 
-  // 🗑️ Delete Title Dialog (Async Safe)
-  Future<void> _showDeleteTitleDialog(
-      TitleEntity title,
-      String type,
-      ) async {
+  Future<void> _showDeleteTitleDialog(TitleEntity title, String type) async {
     final titleVM = context.read<TitleViewModel>();
     final expenseVM = context.read<ExpenseViewModel>();
     final relatedExpenses = expenseVM.expenses.where((e) => e.titleId == title.id).toList();
@@ -374,37 +368,22 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      "This action is IRREVERSIBLE. All ${relatedExpenses.length} associated records will be lost.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: colorScheme.onSurfaceVariant),
-                    ),
+                    Text("This action is IRREVERSIBLE. All ${relatedExpenses.length} records will be lost.", textAlign: TextAlign.center),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: controller,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        hintText: "Type DELETE to confirm",
-                        helperText: "Type DELETE exactly",
-                      ),
+                      decoration: const InputDecoration(border: OutlineInputBorder(), hintText: "Type DELETE to confirm"),
                       onChanged: (_) => setState(() {}),
-                      validator: (val) => val != "DELETE" ? "Incorrect verification" : null,
+                      validator: (val) => val != "DELETE" ? "Incorrect" : null,
                     ),
                   ],
                 ),
               ),
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(innerContext, false),
-                child: const Text("Cancel"),
-              ),
+              TextButton(onPressed: () => Navigator.pop(innerContext, false), child: const Text("Cancel")),
               FilledButton(
-                onPressed: isMatch
-                    ? () {
-                  if (formKey.currentState!.validate()) Navigator.pop(innerContext, true);
-                }
-                    : null,
+                onPressed: isMatch ? () => Navigator.pop(innerContext, true) : null,
                 style: FilledButton.styleFrom(backgroundColor: colorScheme.error),
                 child: const Text("Delete Forever"),
               ),
@@ -417,63 +396,34 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
     if (shouldDelete == true && mounted) {
       setState(() => _isDeleting = true);
       try {
-        await titleVM.deleteTitleWithCascade(
-          type: type,
-          titleId: title.id,
-          relatedItemIds: relatedExpenses.map((e) => e.id).toList(),
-        );
-
+        await titleVM.deleteTitleWithCascade(type: type, titleId: title.id, relatedItemIds: relatedExpenses.map((e) => e.id).toList());
         if (!mounted) return;
-
         Navigator.of(context, rootNavigator: true).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Title and records deleted successfully")),
-        );
       } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-        );
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
       } finally {
         if (mounted) setState(() => _isDeleting = false);
       }
     }
   }
 
-  // 🛠 Generic Helper for Confirmation Dialogs
-  Future<bool?> _showConfirmationDialog({
-    required String title,
-    required String content,
-    required String confirmBtnText,
-    bool isDestructive = false,
-  }) {
+  Future<bool?> _showConfirmationDialog({required String title, required String content, required String confirmBtnText, bool isDestructive = false}) {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(title),
         content: Text(content),
-        backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: isDestructive ? FilledButton.styleFrom(backgroundColor: Colors.red) : null,
-            child: Text(confirmBtnText),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          FilledButton(onPressed: () => Navigator.pop(context, true), style: isDestructive ? FilledButton.styleFrom(backgroundColor: Colors.red) : null, child: Text(confirmBtnText)),
         ],
       ),
     );
   }
 
-  // ✅ NEW: Add Expense Amount Dialog Logic with Date Selection
   Future<void> _showAddAmountDialog(TitleEntity title) async {
     final TextEditingController amountController = TextEditingController();
     final colorScheme = Theme.of(context).colorScheme;
-
-    // Date အတွက် variable
     DateTime selectedDate = DateTime.now();
 
     final double? amount = await showDialog<double>(
@@ -484,91 +434,39 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
           return AlertDialog(
             backgroundColor: colorScheme.surface,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Row(
-              children: [
-                Icon(Icons.remove_circle, color: colorScheme.error),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    "Add Expense",
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-              ],
-            ),
-
+            title: const Text("Add Expense"),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Amount Input
                 TextField(
                   controller: amountController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: "Amount",
-                    hintText: "0.0",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: colorScheme.surfaceContainer,
-                  ),
+                  decoration: const InputDecoration(labelText: "Amount", border: OutlineInputBorder()),
                 ),
-
                 const SizedBox(height: 16),
-
-                // Date Selection
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Date:',
-                      style: Theme.of(context).textTheme.labelLarge,
-                    ),
+                    const Text('Date:'),
                     TextButton.icon(
                       icon: const Icon(Icons.calendar_today, size: 18),
-                      label: Text(
-                        '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
+                      label: Text('${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
                       onPressed: () async {
-                        final DateTime? picked = await showDatePicker(
-                          context: innerContext,
-                          initialDate: selectedDate,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime.now(),
-                        );
-
-                        if (picked != null && picked != selectedDate) {
-                          setState(() {
-                            selectedDate = picked;
-                          });
-                        }
+                        final picked = await showDatePicker(context: innerContext, initialDate: selectedDate, firstDate: DateTime(2000), lastDate: DateTime.now());
+                        if (picked != null) setState(() => selectedDate = picked);
                       },
                     ),
                   ],
                 ),
               ],
             ),
-
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text("Cancel"),
-              ),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
               FilledButton(
                 onPressed: () {
-                  final text = amountController.text.trim();
-                  final value = double.tryParse(text);
-                  if (value != null && value > 0) {
-                    Navigator.pop(ctx, value);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Please enter a valid amount"),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
+                  final val = double.tryParse(amountController.text.trim());
+                  if (val != null && val > 0) Navigator.pop(ctx, val);
                 },
                 child: const Text("Save"),
               ),
@@ -578,63 +476,19 @@ class _ExpenseByTitleScreenState extends State<ExpenseByTitleScreen> {
       ),
     );
 
-    // Save Logic for Expense with Selected Date
     if (amount != null && mounted) {
-      try {
-        final expenseVM = context.read<ExpenseViewModel>();
-
-        final newExpense = ExpenseEntity(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          titleId: title.id,
-          amount: amount,
-          date: selectedDate, // ✅ Selected date ကိုသုံးမယ်
-          createdAt: DateTime.now(),
-        );
-
-        await expenseVM.addExpense(newExpense);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "- ${amount.toStringAsFixed(2)} added for ${selectedDate.day}/${selectedDate.month}",
-              ),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Error: $e"),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+      final expenseVM = context.read<ExpenseViewModel>();
+      await expenseVM.addExpense(ExpenseEntity(id: DateTime.now().millisecondsSinceEpoch.toString(), titleId: title.id, amount: amount, date: selectedDate, createdAt: DateTime.now()));
     }
   }
 }
-
-// -----------------------------------------------------------------------------
-// 🧩 Updated UI Components
-// -----------------------------------------------------------------------------
 
 class _ExpenseListItem extends StatelessWidget {
   final ExpenseEntity expense;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  const _ExpenseListItem({required this.expense, required this.onEdit, required this.onDelete});
 
-  const _ExpenseListItem({
-    required this.expense,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  // ယခင် list view မှ _getDayOfWeek utility function ကို ထည့်သွင်းထားသည်
   String _getDayOfWeek(DateTime date) {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return days[date.weekday - 1];
@@ -643,107 +497,34 @@ class _ExpenseListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final tertiaryColor = colorScheme.tertiary; // Tertiary Color ကို အဓိကထားသုံးမည်
-
-    final dateStr = DateFormat('MMM dd, yyyy').format(expense.date);
-    final dayOfWeek = _getDayOfWeek(expense.date);
-    final timeStr = DateFormat('hh:mm a').format(expense.date);
-
-    final subtitleText = timeStr;
-
-
+    final tertiaryColor = colorScheme.tertiary;
     return Slidable(
       key: ValueKey(expense.id),
       endActionPane: ActionPane(
         motion: const ScrollMotion(),
         extentRatio: 0.4,
         children: [
-          SlidableAction(
-            onPressed: (_) => onEdit(),
-            backgroundColor: Colors.orange,
-            foregroundColor: Colors.white,
-            icon: Icons.edit_rounded,
-            label: 'Edit',
-            borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
-          ),
-          SlidableAction(
-            onPressed: (_) => onDelete(),
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
-            icon: Icons.delete_rounded,
-            label: 'Delete',
-            borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
-          ),
+          SlidableAction(onPressed: (_) => onEdit(), backgroundColor: Colors.orange, icon: Icons.edit_rounded, label: 'Edit', borderRadius: const BorderRadius.horizontal(left: Radius.circular(12))),
+          SlidableAction(onPressed: (_) => onDelete(), backgroundColor: Colors.red, icon: Icons.delete_rounded, label: 'Delete', borderRadius: const BorderRadius.horizontal(right: Radius.circular(12))),
         ],
       ),
-      // List View Style Pattern ကို အသုံးပြုထားသည်
-      child: Container(
-        color: colorScheme.surface, // List item background color
-        child: ListTile(
-          onTap: onEdit,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
-          ),
-
-          // MARK: LEADING - Day Number Box Style
-          leading: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: tertiaryColor.withOpacity(0.1), // tertiary color အကြည်
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                expense.date.day.toString(), // နေ့စွဲ၏ Day ကို ပြသည်
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: tertiaryColor,
-                ),
-              ),
-            ),
-          ),
-
-          // MARK: TITLE - Date and Day of Week Style
-          title: Row(
-            children: [
-              Text(
-                dateStr, // MMM dd, yyyy
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                dayOfWeek, // Mon, Tue, etc.
-                style: TextStyle(
-                  color: Colors.grey.withOpacity(0.7),
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-
-          // MARK: SUBTITLE - Time (or transaction count)
-          subtitle: Text(
-            subtitleText, // hh:mm a
-            style: TextStyle(
-              color: Colors.grey.withOpacity(0.7),
-              fontSize: 12,
-            ),
-          ),
-
-          // MARK: TRAILING - Amount (tertiary color)
-          trailing: CurrencyText(
-            amount: expense.amount,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: tertiaryColor, // tertiary color
-              fontSize: 16,
-            ),
-          ),
+      child: ListTile(
+        onTap: onEdit,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 40, height: 40,
+          decoration: BoxDecoration(color: tertiaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+          child: Center(child: Text(expense.date.day.toString(), style: TextStyle(fontWeight: FontWeight.bold, color: tertiaryColor))),
         ),
+        title: Row(
+          children: [
+            Text(DateFormat('MMM dd, yyyy').format(expense.date), style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(width: 8),
+            Text(_getDayOfWeek(expense.date), style: TextStyle(color: Colors.grey.withValues(alpha: 0.7), fontSize: 12)),
+          ],
+        ),
+        subtitle: Text(DateFormat('hh:mm a').format(expense.date), style: TextStyle(color: Colors.grey.withValues(alpha: 0.7), fontSize: 12)),
+        trailing: CurrencyText(amount: expense.amount, style: TextStyle(fontWeight: FontWeight.bold, color: tertiaryColor, fontSize: 16)),
       ),
     );
   }
@@ -751,15 +532,8 @@ class _ExpenseListItem extends StatelessWidget {
 
 class _EmptyStateView extends StatelessWidget {
   const _EmptyStateView();
-
   @override
   Widget build(BuildContext context) {
-    return CustomEmptyWidget(
-      title: "No Expenses Found",
-      message: "Start tracking your expenses by adding your first record.",
-      icon: Icons.notes_rounded,
-      type: EmptyStateType.section,
-      iconColor: Theme.of(context).colorScheme.outline,
-    );
+    return const CustomEmptyWidget(title: "No Expenses Found", message: "Start tracking your expenses by adding your first record.", icon: Icons.notes_rounded, type: EmptyStateType.section);
   }
 }

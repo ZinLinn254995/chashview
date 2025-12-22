@@ -1,4 +1,6 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../domain/entities/category_entity.dart';
@@ -803,29 +805,57 @@ class _IncomeScreenState extends State<IncomeScreen>
     );
   }
 
+  // Data အားလုံးကို Refresh လုပ်ပေးမည့် logic
+  Future<void> _handleRefresh() async {
+    HapticFeedback.mediumImpact();
+
+    final incomeVM = Provider.of<IncomeViewModel>(context, listen: false);
+    final categoryVM = Provider.of<CategoryViewModel>(context, listen: false);
+    final titleVM = Provider.of<TitleViewModel>(context, listen: false);
+
+    _triggerSummaryUpdate();
+
+    await Future.wait([
+      incomeVM.loadIncomes(),
+      categoryVM.loadCategories(),
+      titleVM.loadTitles(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final colorScheme = Theme.of(context).colorScheme;
 
-    // UPDATED: Wrap in GestureDetector to hide keyboard on tap outside
     return GestureDetector(
-      onTap: () {
-        // Unfocus keyboard when tapping outside of inputs
-        FocusScope.of(context).unfocus();
-      },
+      onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        backgroundColor: colorScheme.surface,
         body: SafeArea(
           child: CustomScrollView(
+            // BouncingScrollPhysics က iOS pull effect အတွက် ပိုကောင်းပါတယ်
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             slivers: [
-              // Section 1: Header + Charts
-              // UPDATED: Hide this section when search is expanded
+              // ၁။ Header Section (Pinned ဖြစ်နေမည်)
               if (!_isSearchExpanded)
-                SliverMainAxisGroup(
-                  slivers: [_buildHeader(context), _buildChartSection(context)],
-                ),
+                _buildHeader(context),
 
-              // Section 2: Categories with Search
+              // ၂။ Refresh Control ကို Header ၏ အောက်တွင် ထားရှိခြင်း
+              // ဤနေရာတွင် ထားခြင်းဖြင့် Header အောက်မှ Pull စတင်ပါမည်
+              CupertinoSliverRefreshControl(
+                refreshTriggerPullDistance: 130.0,
+                refreshIndicatorExtent: 60.0,
+                onRefresh: _handleRefresh,
+              ),
+
+              // ၃။ Chart Section
+              if (!_isSearchExpanded)
+                _buildChartSection(context),
+
+              // ၄။ Categories Header နှင့် List
               SliverMainAxisGroup(
                 slivers: [
                   _buildCategoriesHeader(context),
@@ -840,8 +870,8 @@ class _IncomeScreenState extends State<IncomeScreen>
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: _onFabPressed,
-          backgroundColor: Theme.of(context).colorScheme.secondary,
-          foregroundColor: Theme.of(context).colorScheme.onSecondary,
+          backgroundColor: colorScheme.secondary,
+          foregroundColor: colorScheme.onSecondary,
           heroTag: null,
           child: const Icon(Icons.add),
         ),

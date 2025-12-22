@@ -39,6 +39,11 @@ class TitleViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> loadTitles() async {
+    _initStreams();
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
+
   void _handleUserChanged() {
     if (authViewModel.user == null) {
       incomeTitles = [];

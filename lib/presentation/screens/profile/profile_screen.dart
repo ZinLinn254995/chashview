@@ -20,17 +20,27 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  late final AuthViewModel authVM = context.read<AuthViewModel>();
+  late final AuthViewModel authVM;
+  late final PlanViewModel planVM;
   PlanEntity? _currentPlan;
+  bool _isLoadingPlan = false;
 
   @override
   void initState() {
     super.initState();
-    authVM.addListener(_authListener);
-    _loadCurrentPlan();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      authVM = context.read<AuthViewModel>();
+      planVM = context.read<PlanViewModel>();
+
+      authVM.addListener(_authListener);
+      planVM.addListener(_planListener);
+
+      // User data ရှိမှ plan load လုပ်မယ်
+      _checkAndLoadPlan();
+    });
   }
 
-  // User Log out ဖြစ်သွားရင် Login page ကို ပြန်ပို့တဲ့ Logic
   void _authListener() {
     if (!authVM.isLoading && authVM.user == null && mounted) {
       Future.delayed(const Duration(milliseconds: 100), () {
@@ -40,32 +50,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
           rootNavigator: true,
         ).pushNamedAndRemoveUntil(RouteNames.login, (route) => false);
       });
+    } else if (authVM.user != null && authVM.user!.currentPlanId != null) {
+      // User data ပြောင်းသွားရင် plan ပြန်ခေါ်
+      _checkAndLoadPlan();
     }
   }
 
-  // Load current plan details
+  void _planListener() {
+    if (mounted) {
+      setState(() {
+        _currentPlan = planVM.selectedPlan;
+        _isLoadingPlan = planVM.isLoading;
+      });
+      print("Plan updated: ${_currentPlan?.name}");
+    }
+  }
+
+  void _checkAndLoadPlan() {
+    final user = authVM.user;
+
+    if (user != null && user.currentPlanId != null && user.currentPlanId!.isNotEmpty) {
+      _loadCurrentPlan();
+    } else {
+      setState(() {
+        _currentPlan = null;
+      });
+    }
+  }
+
   void _loadCurrentPlan() {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final user = authVM.user;
-      if (user != null && user.currentPlanId != null) {
-        final planVM = context.read<PlanViewModel>();
-        try {
-          await planVM.selectPlan(user.currentPlanId!);
-          if (mounted) {
-            setState(() {
-              _currentPlan = planVM.selectedPlan;
-            });
-          }
-        } catch (e) {
-          // Plan not found, leave as null
-        }
-      }
+    final user = authVM.user;
+
+    if (user == null || user.currentPlanId == null || user.currentPlanId!.isEmpty) {
+      setState(() {
+        _currentPlan = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingPlan = true;
     });
+
+    try {
+      planVM.selectPlan(user.currentPlanId!);
+    } catch (e) {
+      print("Error loading plan: $e");
+      setState(() {
+        _isLoadingPlan = false;
+        _currentPlan = null;
+      });
+    }
   }
 
   @override
   void dispose() {
     authVM.removeListener(_authListener);
+    planVM.removeListener(_planListener);
     super.dispose();
   }
 
@@ -114,6 +155,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? _calculateRemainingDays(user.subscriptionEnd!)
         : 0;
     final bool isExpired = remainingDays <= 0;
+
+    if (_isLoadingPlan) {
+      return Card(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 16),
+              Text("Loading plan details..."),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_currentPlan == null && user.status == UserStatus.pro) {
+      return SizedBox.shrink(); // မပြဘဲ လွယ်ထားတာ ပိုကောင်းပါတယ်
+    }
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 10),
@@ -209,9 +274,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ).textTheme.labelMedium?.copyWith(color: Colors.grey),
                       ),
                       Text(
-                        '${_currentPlan?.name} Plan',
+                        '${_currentPlan?.name ?? 'Unknown'} Plan',
                         style: TextStyle(
-                          //color: isExpired ? Colors.red : Colors.green,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -493,7 +557,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // ====================================================
                 if (authVM.isAdminOrModerator) ...[
                   _buildSectionHeader(context, "ADMIN PANEL ACCESS"),
-                  const SizedBox(height: 15),
+                  //const SizedBox(height: 15),
 
                   // Admin options
                   _buildProfileOption(

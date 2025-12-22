@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
@@ -29,13 +30,23 @@ class IncomeByTitleScreen extends StatefulWidget {
 class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
   bool _isDeleting = false;
 
+  // Data Refresh Logic
+  Future<void> _handleRefresh() async {
+    final incomeVM = context.read<IncomeViewModel>();
+    final titleVM = context.read<TitleViewModel>();
+
+    await Future.wait([
+      incomeVM.loadIncomes(),
+      titleVM.loadTitles(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Consumer<TitleViewModel>(
       builder: (context, titleVM, _) {
-        // Find latest title state or fallback to passed title
         final currentTitle = titleVM.incomeTitles.firstWhere(
               (t) => t.id == widget.title.id,
           orElse: () => widget.title,
@@ -43,7 +54,6 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
 
         return Scaffold(
           backgroundColor: colorScheme.surface,
-          // AppBar ကို ရိုးရှင်းအောင် ပြောင်းလိုက်ပါပြီ
           appBar: AppBar(
             title: Text(
               currentTitle.name,
@@ -55,46 +65,71 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
             backgroundColor: colorScheme.surface,
             toolbarHeight: 60,
           ),
+          // RefreshIndicator ကို ဖယ်ထုတ်ပြီး Consumer ကို တိုက်ရိုက် body မှာ ထားပါမယ်
           body: Consumer<IncomeViewModel>(
             builder: (context, vm, child) {
-              // Filter and Sort Incomes
               final filteredIncomes = vm.incomes
                   .where((income) => income.titleId == widget.title.id)
                   .toList()
                 ..sort((a, b) => b.date.compareTo(a.date));
 
-              // Calculate Total Amount for visual summary
               final totalAmount = filteredIncomes.fold(0.0, (sum, item) => sum + item.amount);
 
-              return Column(
-                children: [
-                  // 🔹 Header Section (Actions & Summary)
-                  _buildHeaderSection(context, titleVM, currentTitle, totalAmount),
+              return CustomScrollView(
+                // BouncingScrollPhysics က Pull down လုပ်တဲ့အခါ ပိုပြီး natural ဖြစ်စေပါတယ်
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+                slivers: [
+                  // 🔹 Cupertino Refresh Control - ဆွဲရတာ တင်းအောင် လုပ်ဆောင်ပေးခြင်း
+                  CupertinoSliverRefreshControl(
+                    // Trigger distance ကို 120 (သို့မဟုတ်) 140 အထိ ထားပေးခြင်းဖြင့်
+                    // မတော်တဆ ဆွဲမိရုံနဲ့ refresh ဖြစ်တာကို ကာကွယ်ပေးပါတယ်
+                    refreshTriggerPullDistance: 130.0,
+                    refreshIndicatorExtent: 60.0,
+                    onRefresh: _handleRefresh,
+                  ),
 
+                  // 🔹 Header Section
+                  SliverToBoxAdapter(
+                    child: _buildHeaderSection(context, titleVM, currentTitle, totalAmount),
+                  ),
 
                   // 🔹 List Section
-                  // မျဉ်းတားရန် ပြောင်းလဲရမည့်နေရာ
-                  Expanded(
-                    child: filteredIncomes.isEmpty
-                        ? const _EmptyStateView()
-                        : ListView.separated(
+                  if (filteredIncomes.isEmpty)
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _EmptyStateView(),
+                    )
+                  else
+                    SliverPadding(
                       padding: const EdgeInsets.fromLTRB(AppPadding.md, 0, AppPadding.md, AppPadding.xl),
-                      itemCount: filteredIncomes.length,
-                      separatorBuilder: (_, __) => Divider(
-                        height: 1, // မျဉ်းအမြင့်
-                        thickness: 0.5, // မျဉ်းအထူ
-                        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5), // အရောင် (opacity နည်းအောင်)
-                      ),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                            final income = filteredIncomes[index];
+                            final isLast = index == filteredIncomes.length - 1;
 
-                      itemBuilder: (context, index) {
-                        return _IncomeListItem(
-                          income: filteredIncomes[index],
-                          onEdit: () => _navigateToEditScreen(filteredIncomes[index]),
-                          onDelete: () => _confirmDeleteIncome(filteredIncomes[index]),
-                        );
-                      },
+                            return Column(
+                              children: [
+                                _IncomeListItem(
+                                  income: income,
+                                  onEdit: () => _navigateToEditScreen(income),
+                                  onDelete: () => _confirmDeleteIncome(income),
+                                ),
+                                if (!isLast)
+                                  Divider(
+                                    height: 1,
+                                    thickness: 0.5,
+                                    color: Theme.of(context).colorScheme.outline.withAlpha(128),
+                                  ),
+                              ],
+                            );
+                          },
+                          childCount: filteredIncomes.length,
+                        ),
+                      ),
                     ),
-                  ),
                 ],
               );
             },
@@ -104,7 +139,6 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
     );
   }
 
-  // 🔹 NEW: Header Section with Buttons & Summary (Cart excluded)
   Widget _buildHeaderSection(
       BuildContext context,
       TitleViewModel titleVM,
@@ -118,14 +152,12 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        // Use secondaryContainer for Income colors
         color: colorScheme.secondaryContainer.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: colorScheme.secondaryContainer),
       ),
       child: Column(
         children: [
-          // Total Amount Display
           Text(
             "Total Income",
             style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
@@ -145,17 +177,14 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              // Add Button (Prominent)
               _buildActionButton(
                 context,
                 icon: Icons.add_circle_rounded,
                 label: "Add",
-                color: colorScheme.secondary, // Income color
+                color: colorScheme.secondary,
                 onTap: () => _showAddAmountDialog(currentTitle),
                 isPrimary: true,
               ),
-
-              // Bookmark Button
               _buildActionButton(
                 context,
                 icon: isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
@@ -165,8 +194,6 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
                   titleVM.toggleTitleBookmark('income', currentTitle.id, !isBookmarked);
                 },
               ),
-
-              // Edit Button
               _buildActionButton(
                 context,
                 icon: Icons.edit_rounded,
@@ -174,8 +201,6 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
                 color: Colors.orange,
                 onTap: () => _showEditTitleDialog(titleVM, currentTitle),
               ),
-
-              // Delete Button
               _buildActionButton(
                 context,
                 icon: Icons.delete_forever_rounded,
@@ -190,7 +215,6 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
     );
   }
 
-  // Helper for Circular Action Buttons (Reused from Expense screen)
   Widget _buildActionButton(
       BuildContext context, {
         required IconData icon,
@@ -248,7 +272,6 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
     );
   }
 
-// 🔥 Delete Income Logic (Async Safe - BuildContext removed)
   Future<void> _confirmDeleteIncome(IncomeEntity income) async {
     final incomeVM = context.read<IncomeViewModel>();
 
@@ -261,9 +284,7 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
 
     if (confirm == true) {
       await incomeVM.removeIncome(income.id);
-
-      if (!mounted) return; // ✅ Async Safety Check
-
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Income deleted successfully"),
@@ -275,25 +296,16 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
     }
   }
 
-  // ✏️ Edit Title Dialog (Async Safe - BuildContext removed)
-  Future<void> _showEditTitleDialog(
-      TitleViewModel titleVM, // Removed BuildContext context
-      TitleEntity currentTitle,
-      ) async {
+  Future<void> _showEditTitleDialog(TitleViewModel titleVM, TitleEntity currentTitle) async {
     final controller = TextEditingController(text: currentTitle.name);
     final formKey = GlobalKey<FormState>();
 
     await showDialog(
-      context: context, // Use State's context
+      context: context,
       builder: (dialogContext) {
         final colorScheme = Theme.of(dialogContext).colorScheme;
-        final textTheme = Theme.of(dialogContext).textTheme;
-
         return AlertDialog(
-          title: Text(
-            "Edit title",
-            style: textTheme.titleMedium,
-          ),
+          title: const Text("Edit title", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           backgroundColor: colorScheme.surface,
           content: Form(
             key: formKey,
@@ -301,27 +313,18 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
               controller: controller,
               autofocus: true,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: "Title Name",
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: "Title Name", border: OutlineInputBorder()),
               validator: (val) => val == null || val.trim().isEmpty ? "Required" : null,
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text("Cancel"),
-            ),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text("Cancel")),
             FilledButton(
               onPressed: () async {
                 if (formKey.currentState!.validate()) {
                   final newName = controller.text.trim();
                   if (newName != currentTitle.name) {
-                    await titleVM.updateTitle(
-                      type: 'income',
-                      title: currentTitle.copyWith(name: newName),
-                    );
+                    await titleVM.updateTitle(type: 'income', title: currentTitle.copyWith(name: newName));
                   }
                   if (dialogContext.mounted) Navigator.pop(dialogContext);
                 }
@@ -334,12 +337,7 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
     );
   }
 
-  // 🗑️ Delete Title Dialog (Async Safe - BuildContext removed)
-  Future<void> _showDeleteTitleDialog(
-      TitleEntity title, // Removed BuildContext context
-      String type,
-      ) async {
-    // Get ViewModels before the first async gap
+  Future<void> _showDeleteTitleDialog(TitleEntity title, String type) async {
     final titleVM = context.read<TitleViewModel>();
     final incomeVM = context.read<IncomeViewModel>();
     final relatedIncomes = incomeVM.incomes.where((e) => e.titleId == title.id).toList();
@@ -348,7 +346,7 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
     final formKey = GlobalKey<FormState>();
 
     final shouldDelete = await showDialog<bool>(
-      context: context, // Use State's context
+      context: context,
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
         builder: (innerContext, setState) {
@@ -365,42 +363,22 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      "This action is IRREVERSIBLE. All ${relatedIncomes.length} associated records will be lost.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: colorScheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildWarningItem(
-                      Icons.receipt,
-                      "${relatedIncomes.length} Income Records",
-                    ),
+                    Text("This action is IRREVERSIBLE. All ${relatedIncomes.length} records will be lost.", textAlign: TextAlign.center),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: controller,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        hintText: "Type DELETE to confirm",
-                        helperText: "Type DELETE exactly",
-                      ),
+                      decoration: const InputDecoration(border: OutlineInputBorder(), hintText: "Type DELETE to confirm"),
                       onChanged: (_) => setState(() {}),
-                      validator: (val) => val != "DELETE" ? "Incorrect verification" : null,
+                      validator: (val) => val != "DELETE" ? "Incorrect" : null,
                     ),
                   ],
                 ),
               ),
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(innerContext, false),
-                child: const Text("Cancel"),
-              ),
+              TextButton(onPressed: () => Navigator.pop(innerContext, false), child: const Text("Cancel")),
               FilledButton(
-                onPressed: isMatch
-                    ? () {
-                  if (formKey.currentState!.validate()) Navigator.pop(innerContext, true);
-                }
-                    : null,
+                onPressed: isMatch ? () => Navigator.pop(innerContext, true) : null,
                 style: FilledButton.styleFrom(backgroundColor: colorScheme.error),
                 child: const Text("Delete Forever"),
               ),
@@ -410,40 +388,23 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
       ),
     );
 
-    // ✅ Fix: Check mounted before proceeding after Async Gap
     if (shouldDelete == true && mounted) {
       setState(() => _isDeleting = true);
       try {
-        await titleVM.deleteTitleWithCascade(
-          type: type,
-          titleId: title.id,
-          relatedItemIds: relatedIncomes.map((e) => e.id).toList(),
-        );
-
-        // ✅ Fix: Check mounted again after second async operation
+        await titleVM.deleteTitleWithCascade(type: type, titleId: title.id, relatedItemIds: relatedIncomes.map((e) => e.id).toList());
         if (!mounted) return;
-
         Navigator.of(context, rootNavigator: true).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Title and records deleted successfully")),
-        );
       } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Delete failed: $e"), backgroundColor: Colors.red),
-        );
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
       } finally {
         if (mounted) setState(() => _isDeleting = false);
       }
     }
   }
 
-  // ✅ NEW: Add Amount Dialog Logic with Date Selection
   Future<void> _showAddAmountDialog(TitleEntity title) async {
     final TextEditingController amountController = TextEditingController();
     final colorScheme = Theme.of(context).colorScheme;
-
-    // Date အတွက် variable
     DateTime selectedDate = DateTime.now();
 
     final double? amount = await showDialog<double>(
@@ -453,92 +414,39 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
         builder: (innerContext, setState) {
           return AlertDialog(
             backgroundColor: colorScheme.surface,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Row(
-              children: [
-                Icon(Icons.add_circle, color: colorScheme.secondary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    "Add Income",
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-              ],
-            ),
-
+            title: const Text("Add Income"),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Amount Input
                 TextField(
                   controller: amountController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: "Amount",
-                    hintText: "0.0",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: colorScheme.surfaceContainer,
-                  ),
+                  decoration: const InputDecoration(labelText: "Amount", border: OutlineInputBorder()),
                 ),
-
                 const SizedBox(height: 16),
-
-                // Date Selection
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Date:',
-                      style: Theme.of(context).textTheme.labelLarge,
-                    ),
+                    const Text('Date:'),
                     TextButton.icon(
                       icon: const Icon(Icons.calendar_today, size: 18),
-                      label: Text(
-                        '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
+                      label: Text('${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
                       onPressed: () async {
-                        final DateTime? picked = await showDatePicker(
-                          context: innerContext,
-                          initialDate: selectedDate,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime.now(),
-                        );
-
-                        if (picked != null && picked != selectedDate) {
-                          setState(() {
-                            selectedDate = picked;
-                          });
-                        }
+                        final picked = await showDatePicker(context: innerContext, initialDate: selectedDate, firstDate: DateTime(2000), lastDate: DateTime.now());
+                        if (picked != null) setState(() => selectedDate = picked);
                       },
                     ),
                   ],
                 ),
               ],
             ),
-
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text("Cancel"),
-              ),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
               FilledButton(
                 onPressed: () {
-                  final text = amountController.text.trim();
-                  final value = double.tryParse(text);
-                  if (value != null && value > 0) {
-                    Navigator.pop(ctx, value);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Please enter a valid amount"),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
+                  final val = double.tryParse(amountController.text.trim());
+                  if (val != null && val > 0) Navigator.pop(ctx, val);
                 },
                 child: const Text("Save"),
               ),
@@ -548,106 +456,33 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
       ),
     );
 
-    // Save Logic with Selected Date
     if (amount != null && mounted) {
-      try {
-        final incomeVM = context.read<IncomeViewModel>();
-
-        final newIncome = IncomeEntity(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          titleId: title.id,
-          amount: amount,
-          date: selectedDate, // ✅ Selected date ကိုသုံးမယ်
-          createdAt: DateTime.now(),
-        );
-
-        await incomeVM.addIncome(newIncome);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "+ ${amount.toStringAsFixed(2)} added for ${selectedDate.day}/${selectedDate.month}",
-              ),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Error: $e"),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+      final incomeVM = context.read<IncomeViewModel>();
+      await incomeVM.addIncome(IncomeEntity(id: DateTime.now().millisecondsSinceEpoch.toString(), titleId: title.id, amount: amount, date: selectedDate, createdAt: DateTime.now()));
     }
   }
 
-  // 🛠 Generic Helper for Confirmation Dialogs (Async Safe - BuildContext removed)
-  Future<bool?> _showConfirmationDialog({
-    required String title,
-    required String content,
-    required String confirmBtnText,
-    bool isDestructive = false,
-  }) {
+  Future<bool?> _showConfirmationDialog({required String title, required String content, required String confirmBtnText, bool isDestructive = false}) {
     return showDialog<bool>(
-      context: context, // Use State's context
-
+      context: context,
       builder: (context) => AlertDialog(
         title: Text(title),
         content: Text(content),
-        backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: isDestructive ? FilledButton.styleFrom(backgroundColor: Colors.red) : null,
-            child: Text(confirmBtnText),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Helper function moved outside of the main async logic
-  Widget _buildWarningItem(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: Colors.grey[700]),
-          const SizedBox(width: 8),
-          Text(text, style: TextStyle(color: Colors.grey[800], fontSize: 13)),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          FilledButton(onPressed: () => Navigator.pop(context, true), style: isDestructive ? FilledButton.styleFrom(backgroundColor: Colors.red) : null, child: Text(confirmBtnText)),
         ],
       ),
     );
   }
 }
 
-// -----------------------------------------------------------------------------
-// 🧩 Updated UI Components
-// -----------------------------------------------------------------------------
-
 class _IncomeListItem extends StatelessWidget {
   final IncomeEntity income;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  const _IncomeListItem({required this.income, required this.onEdit, required this.onDelete});
 
-  const _IncomeListItem({
-    required this.income,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  // ယခင် list view မှ _getDayOfWeek utility function ကို ထည့်သွင်းထားသည်
   String _getDayOfWeek(DateTime date) {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return days[date.weekday - 1];
@@ -656,111 +491,34 @@ class _IncomeListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final secondaryColor = colorScheme.secondary; // Secondary Color ကို အဓိကထားသုံးမည်
-
-    final dateStr = DateFormat('MMM dd, yyyy').format(income.date);
-    final dayOfWeek = _getDayOfWeek(income.date);
-    final timeStr = DateFormat('hh:mm a').format(income.date);
-
-    // Subtitle အတွက် အချိန် (Time) ကိုသာ အဓိကပြရန်
-    final subtitleText = timeStr;
-
-
+    final secondaryColor = colorScheme.secondary;
     return Slidable(
       key: ValueKey(income.id),
       endActionPane: ActionPane(
         motion: const ScrollMotion(),
         extentRatio: 0.4,
         children: [
-          SlidableAction(
-            onPressed: (_) => onEdit(),
-            // Secondary Color ကို သုံးသည်
-            backgroundColor: Colors.orange,
-            foregroundColor: Colors.white,
-            icon: Icons.edit_rounded,
-            label: 'Edit',
-            borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
-          ),
-          SlidableAction(
-            onPressed: (_) => onDelete(),
-            // Delete အတွက် အနီရောင်ကို ဆက်သုံးသည်
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
-            icon: Icons.delete_rounded,
-            label: 'Delete',
-            borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
-          ),
+          SlidableAction(onPressed: (_) => onEdit(), backgroundColor: Colors.orange, icon: Icons.edit_rounded, label: 'Edit', borderRadius: const BorderRadius.horizontal(left: Radius.circular(12))),
+          SlidableAction(onPressed: (_) => onDelete(), backgroundColor: Colors.red, icon: Icons.delete_rounded, label: 'Delete', borderRadius: const BorderRadius.horizontal(right: Radius.circular(12))),
         ],
       ),
-      // List View Style Pattern ကို အသုံးပြုထားသည် (Card Decoration များကို ဖယ်ရှားထားသည်)
-      child: Container(
-        color: colorScheme.surface, // List item background color
-        child: ListTile(
-          onTap: onEdit,
-          // ယခင် list view item ၏ padding
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
-          ),
-
-          // MARK: LEADING - Day Number Box Style (Secondary Color)
-          leading: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: secondaryColor.withValues(alpha: 0.1), // Secondary color အကြည်
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                income.date.day.toString(), // နေ့စွဲ၏ Day ကို ပြသည်
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: secondaryColor,
-                ),
-              ),
-            ),
-          ),
-
-          // MARK: TITLE - Date and Day of Week Style
-          title: Row(
-            children: [
-              Text(
-                dateStr, // MMM dd, yyyy
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                dayOfWeek, // Mon, Tue, etc.
-                style: TextStyle(
-                  color: Colors.grey.withValues(alpha: 0.7),
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-
-          // MARK: SUBTITLE - Time
-          subtitle: Text(
-            subtitleText, // hh:mm a
-            style: TextStyle(
-              color: Colors.grey.withValues(alpha: 0.7),
-              fontSize: 12,
-            ),
-          ),
-
-          // MARK: TRAILING - Amount (Secondary Color)
-          trailing: CurrencyText(
-            amount: income.amount,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: secondaryColor, // Secondary color
-              fontSize: 16,
-            ),
-          ),
+      child: ListTile(
+        onTap: onEdit,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 40, height: 40,
+          decoration: BoxDecoration(color: secondaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+          child: Center(child: Text(income.date.day.toString(), style: TextStyle(fontWeight: FontWeight.bold, color: secondaryColor))),
         ),
+        title: Row(
+          children: [
+            Text(DateFormat('MMM dd, yyyy').format(income.date), style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(width: 8),
+            Text(_getDayOfWeek(income.date), style: TextStyle(color: Colors.grey.withValues(alpha: 0.7), fontSize: 12)),
+          ],
+        ),
+        subtitle: Text(DateFormat('hh:mm a').format(income.date), style: TextStyle(color: Colors.grey.withValues(alpha: 0.7), fontSize: 12)),
+        trailing: CurrencyText(amount: income.amount, style: TextStyle(fontWeight: FontWeight.bold, color: secondaryColor, fontSize: 16)),
       ),
     );
   }
@@ -768,15 +526,8 @@ class _IncomeListItem extends StatelessWidget {
 
 class _EmptyStateView extends StatelessWidget {
   const _EmptyStateView();
-
   @override
   Widget build(BuildContext context) {
-    return CustomEmptyWidget(
-      title: "No Incomes Found",
-      message: "Start tracking your Incomes by adding your first record.",
-      icon: Icons.notes_rounded,
-      type: EmptyStateType.section,
-      iconColor: Theme.of(context).colorScheme.outline,
-    );
+    return const CustomEmptyWidget(title: "No Incomes Found", message: "Start tracking your Incomes by adding your first record.", icon: Icons.notes_rounded, type: EmptyStateType.section);
   }
 }

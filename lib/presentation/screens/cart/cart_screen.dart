@@ -17,63 +17,109 @@ class CartScreen extends StatelessWidget {
   Future<void> _showAmountDialog(
       BuildContext context,
       TitleEntity title,
-      TitleViewModel titleVM, // 🔥 Updated: accepts TitleViewModel
+      TitleViewModel titleVM,
       ) async {
     final TextEditingController controller = TextEditingController();
     final colorScheme = Theme.of(context).colorScheme;
 
+    // 🔥 NEW: Selected Date logic
+    DateTime selectedDate = DateTime.now();
+
     final double? amount = await showDialog<double>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(
-              Icons.remove_circle,
-              color: colorScheme.tertiary,
+      builder: (ctx) => StatefulBuilder( // 🔥 Date ပြောင်းလဲမှုကို Dialog ထဲမှာ မြင်ရဖို့ StatefulBuilder သုံးရပါမယ်
+        builder: (innerCtx, setState) {
+          return AlertDialog(
+            backgroundColor: colorScheme.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.remove_circle,
+                  color: colorScheme.tertiary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title.name,
-                style: Theme.of(context).textTheme.titleMedium,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 1. Amount Input
+                TextField(
+                  controller: controller,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: "Amount",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: colorScheme.surfaceContainer,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 2. 🔥 NEW: Date Picker Widget
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Date:',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.calendar_today, size: 18),
+                      label: Text(
+                        '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      onPressed: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: innerCtx,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now(),
+                        );
+
+                        if (picked != null && picked != selectedDate) {
+                          setState(() {
+                            selectedDate = picked;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("Cancel"),
               ),
-            ),
-          ],
-        ),
-        content: TextField(
-          controller: controller,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: "Amount",
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            filled: true,
-            fillColor: colorScheme.surfaceContainer,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
-          ),
-          FilledButton(
-            onPressed: () {
-              final text = controller.text.trim();
-              final value = double.tryParse(text);
-              if (value != null && value > 0) {
-                Navigator.pop(ctx, value);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Please enter a valid amount")),
-                );
-              }
-            },
-            child: const Text("Add Expense"),
-          ),
-        ],
+              FilledButton(
+                onPressed: () {
+                  final text = controller.text.trim();
+                  final value = double.tryParse(text);
+                  if (value != null && value > 0) {
+                    Navigator.pop(ctx, value);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Please enter a valid amount")),
+                    );
+                  }
+                },
+                child: const Text("Add Expense"),
+              ),
+            ],
+          );
+        },
       ),
     );
 
@@ -84,21 +130,20 @@ class CartScreen extends StatelessWidget {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         titleId: title.id,
         amount: amount,
-        date: DateTime.now(),
+        date: selectedDate, // 🔥 Updated: selectedDate ကို သုံးထားပါတယ်
         createdAt: DateTime.now(),
       );
 
       await expenseVM.addExpense(newExpense);
 
-      // 🔥 Updated: TitleViewModel ကိုသုံးပြီး Cart ဖြုတ်ပါ
-      // Note: 'expense' type ကို hardcode ထည့်ထားပါတယ် (Cart က expense အတွက်ပဲမို့ပါ)
+      // Cart ကနေ ပြန်ဖြုတ်မယ်
       await titleVM.toggleTitleCart('expense', title.id, false);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "- ${amount.toStringAsFixed(2)} • ${title.name}",
+              "- ${amount.toStringAsFixed(2)} • ${title.name} (${selectedDate.day}/${selectedDate.month})",
             ),
             backgroundColor: Colors.red,
           ),
