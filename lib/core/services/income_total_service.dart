@@ -1,5 +1,4 @@
 import 'package:firebase_database/firebase_database.dart';
-import '../../domain/entities/income_entity.dart';
 
 class IncomeTotalService {
   final _db = FirebaseDatabase.instance.ref();

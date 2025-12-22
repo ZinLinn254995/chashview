@@ -1,7 +1,4 @@
-import 'package:chashview/domain/usecases/auth/get_all_users_usecase.dart';
-import 'package:chashview/domain/usecases/auth/update_user_role_usecase.dart';
-import 'package:chashview/domain/usecases/auth/update_user_status_usecase.dart';
-import 'package:chashview/domain/usecases/subscription/activate_bnpl_subscription_usecase.dart';
+import 'package:cash_view/presentation/viewmodels/theme_viewmodel.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
@@ -39,11 +36,14 @@ import '../domain/repositories/target_repository.dart';
 import '../domain/repositories/title_repository.dart';
 import '../domain/repositories/top_up_repository.dart';
 import '../domain/repositories/transaction_repository.dart';
+import '../domain/usecases/auth/get_all_users_usecase.dart';
 import '../domain/usecases/auth/get_current_user_usecase.dart';
 import '../domain/usecases/auth/sign_in_with_google_usecase.dart';
 import '../domain/usecases/auth/sign_out_usecase.dart';
 import '../domain/usecases/auth/update_user_details_usecase.dart';
 import '../domain/usecases/auth/update_user_field_usecase.dart';
+import '../domain/usecases/auth/update_user_role_usecase.dart';
+import '../domain/usecases/auth/update_user_status_usecase.dart';
 import '../domain/usecases/budget/create_budget_usecase.dart';
 import '../domain/usecases/budget/delete_budget_usecase.dart';
 import '../domain/usecases/budget/get_budgets_usecase.dart';
@@ -69,6 +69,7 @@ import '../domain/usecases/plan/delete_plan_usecase.dart';
 import '../domain/usecases/plan/get_plan_by_id_usecase.dart';
 import '../domain/usecases/plan/get_plans_usecase.dart';
 import '../domain/usecases/plan/update_plan_usecase.dart';
+import '../domain/usecases/subscription/activate_bnpl_subscription_usecase.dart';
 import '../domain/usecases/subscription/apply_top_up_to_subscription_usecase.dart';
 import '../domain/usecases/subscription/check_subscription_status_usecase.dart';
 import '../domain/usecases/summary/calculate_net_usecase.dart';
@@ -301,8 +302,11 @@ Future<void> init() async {
     () => CurrencyViewModel(service: sl()),
   );
 
+
   // External / Services
   sl.registerLazySingleton<FirebaseService>(() => FirebaseService());
+
+  sl.registerLazySingleton(() => ThemeViewModel());
 
   // Category Remote DataSource
   sl.registerLazySingleton(() => CategoryRemoteDataSource(sl()));

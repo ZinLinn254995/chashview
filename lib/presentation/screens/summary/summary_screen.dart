@@ -1,8 +1,7 @@
-import 'package:chashview/core/constants/app_sizes.dart';
-import 'package:chashview/presentation/widgets/currency_text.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/summary_viewmodel.dart';
+import '../../widgets/currency_text.dart';
 import '../../widgets/custom_empty_widget.dart';
 import '../../widgets/date_range_picker.dart';
 import '../../widgets/time_range_tab.dart';

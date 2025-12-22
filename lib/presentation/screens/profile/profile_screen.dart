@@ -10,6 +10,7 @@ import '../../../domain/entities/user_entity.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/currency_viewmodel.dart';
 import '../../viewmodels/plan_viewmodel.dart';
+import '../../viewmodels/theme_viewmodel.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -98,11 +99,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return DateFormat('dd/MM/yyyy HH:mm').format(date);
   }
 
-  // Format date only
-  String _formatDate(DateTime date) {
-    return DateFormat('dd/MM/yyyy').format(date);
-  }
-
   // Calculate remaining days
   int _calculateRemainingDays(DateTime endDate) {
     final now = DateTime.now();
@@ -110,210 +106,140 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return difference.inDays;
   }
 
-  // Build subscription info section
-  Widget _buildSubscriptionInfo(BuildContext context, UserEntity user) {
+  Widget _buildSubscriptionInfoDashboard(
+    BuildContext context,
+    UserEntity user,
+  ) {
     final remainingDays = user.subscriptionEnd != null
         ? _calculateRemainingDays(user.subscriptionEnd!)
         : 0;
+    final bool isExpired = remainingDays <= 0;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Subscription Status Header
-            Row(
+      clipBehavior: Clip.antiAlias,
+      //color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          // Top Header Section
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                Icon(
-                  Icons.workspace_premium,
-                  color: Theme.of(context).colorScheme.primary,
+                CircleAvatar(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  radius: 20,
+                  child: Icon(Icons.schedule , color: Colors.white, size: 24),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  'Subscription Details',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Divider(),
-
-            // Plan Name
-            if (_currentPlan != null) ...[
-              _buildDetailRow(
-                context,
-                icon: Icons.card_membership,
-                label: 'Last Used Plan',
-                value: _currentPlan!.name,
-                valueColor: Theme.of(context).colorScheme.primary,
-              ),
-            ],
-
-            // BNPL Status
-            /*_buildDetailRow(
-              context,
-              icon: user.hasActiveBnplDebt
-                  ? Icons.money_off_csred
-                  : Icons.payment,
-              label: 'ရက်(၃၀) ကြိုတင်အသုံးပြုခြင်း',
-              value: user.hasActiveBnplDebt
-                  ? 'အသုံးပြုထားပါသည်'
-                  : 'အသုံးမပြုထားပါ',
-              valueColor: user.hasActiveBnplDebt ? Colors.red : Colors.green,
-            ),*/
-
-            // Subscription End Date
-            if (user.subscriptionEnd != null) ...[
-              _buildDetailRow(
-                context,
-                icon: Icons.calendar_today,
-                label: 'Subscription End',
-                value: _formatDateTime(user.subscriptionEnd!),
-              ),
-              const SizedBox(height: 8),
-
-              // Remaining Days
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: remainingDays > 7
-                      ? Colors.green[50]
-                      : remainingDays > 0
-                      ? Colors.amber[50]
-                      : Colors.red[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: remainingDays > 7
-                        ? Colors.green[100]!
-                        : remainingDays > 0
-                        ? Colors.amber[100]!
-                        : Colors.red[100]!,
-                  ),
-                ),
-                child: Row(
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      remainingDays > 7
-                          ? Icons.check_circle
-                          : remainingDays > 0
-                          ? Icons.warning
-                          : Icons.error,
-                      color: remainingDays > 7
-                          ? Colors.green
-                          : remainingDays > 0
-                          ? Colors.amber
-                          : Colors.red,
-                      size: 16,
+                    Text(
+                      'Time Left',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelMedium?.copyWith(color: Colors.grey),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        remainingDays > 0
-                            ? '$remainingDays days remaining'
-                            : 'Subscription has expired',
-                        style: TextStyle(
-                          color: remainingDays > 7
-                              ? Colors.green
-                              : remainingDays > 0
-                              ? Colors.amber[700]
-                              : Colors.red,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$remainingDays Days',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: remainingDays < 7 ? Colors.red : null,
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-
-            const SizedBox(height: 8),
-
-            // Subscription Type
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: user.hasActiveBnplDebt
-                    ? Colors.blue[50]
-                    : Colors.purple[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: user.hasActiveBnplDebt
-                      ? Colors.blue[100]!
-                      : Colors.purple[100]!,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    user.hasActiveBnplDebt
-                        ? Icons.account_balance_wallet
-                        : Icons.paid,
-                    color: user.hasActiveBnplDebt
-                        ? Colors.blue
-                        : Colors.purple,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      user.hasActiveBnplDebt
-                          ? 'BNPL Subscription'
-                          : 'Paid Subscription',
-                      style: TextStyle(
-                        color: user.hasActiveBnplDebt
-                            ? Colors.blue
-                            : Colors.purple,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Build detail row helper
-  Widget _buildDetailRow(
-      BuildContext context, {
-        required IconData icon,
-        required String label,
-        required String value,
-        Color? valueColor,
-      }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: Colors.grey[600],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+
+          // Info Grid
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Left Side: Status
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Status',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.labelMedium?.copyWith(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            isExpired ? Icons.cancel : Icons.check_circle,
+                            color: isExpired ? Colors.red : Colors.green,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isExpired ? 'Expired' : 'Active',
+                            style: TextStyle(
+                              color: isExpired ? Colors.red : Colors.green,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Container(width: 1, height: 40, color: Colors.grey[300]),
+                const SizedBox(width: 16),
+                // Right Side: Days
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Current Plan',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.labelMedium?.copyWith(color: Colors.grey),
+                      ),
+                      Text(
+                        '${_currentPlan?.name} Plan',
+                        style: TextStyle(
+                          //color: isExpired ? Colors.red : Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          // Footer Date
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
-                  ),
+                  'Valid Until:',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelMedium?.copyWith(color: Colors.grey),
                 ),
-                const SizedBox(height: 4),
                 Text(
-                  value,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: valueColor ?? Theme.of(context).colorScheme.onSurface,
+                  user.subscriptionEnd != null
+                      ? _formatDateTime(user.subscriptionEnd!)
+                      : '-',
+                  style: const TextStyle(
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -392,7 +318,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: colorScheme.shadow.withOpacity(0.1),
+                                color: colorScheme.shadow.withValues(
+                                  alpha: 0.1,
+                                ),
                                 blurRadius: 10,
                                 offset: const Offset(0, 5),
                               ),
@@ -406,10 +334,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 : null,
                             child: user.photoUrl.isEmpty
                                 ? Icon(
-                              Icons.person,
-                              size: 50,
-                              color: colorScheme.onSurfaceVariant,
-                            )
+                                    Icons.person,
+                                    size: 50,
+                                    color: colorScheme.onSurfaceVariant,
+                                  )
                                 : null,
                           ),
                         ),
@@ -472,11 +400,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               if (user.status == UserStatus.pro)
-                                Icon(
-                                  Icons.star,
-                                  color: Colors.white,
-                                  size: 12,
-                                ),
+                                Icon(Icons.star, color: Colors.white, size: 12),
                               if (user.status == UserStatus.pro)
                                 const SizedBox(width: 4),
                               Text(
@@ -514,8 +438,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             SnackBar(
                               content: Text("Copied ID: ${user.displayId}"),
                               duration: const Duration(seconds: 1),
-                              backgroundColor:
-                              Theme.of(context).colorScheme.primary,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
                             ),
                           );
                         }
@@ -558,7 +483,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // ====================================================
                 // 2. SUBSCRIPTION INFO SECTION (For Pro Users)
                 // ====================================================
-                if (user.status == UserStatus.pro) _buildSubscriptionInfo(context, user),
+                if (user.status == UserStatus.pro)
+                  _buildSubscriptionInfoDashboard(context, user),
 
                 const SizedBox(height: 15),
 
@@ -610,10 +536,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 25),
                 ],
 
-                // ====================================================
-                // 5. SETTINGS SECTION
-                // ====================================================
-                _buildSectionHeader(context, "Settings"),
+                _buildSectionHeader(context, "Subscription"),
                 _buildProfileOption(
                   context,
                   icon: Icons.wallet_giftcard,
@@ -622,16 +545,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Navigator.pushNamed(context, RouteNames.redeem);
                   },
                 ),
+
+                // ====================================================
+                // 5. SETTINGS SECTION
+                // ====================================================
+                _buildSectionHeader(context, "Settings"),
+
                 // Currency Selector
                 _buildProfileOption(
                   context,
                   icon: Icons.currency_exchange,
                   title: "Currency",
                   trailingText:
-                  AppCurrency.currencyFullName[currencyVM.selectedCurrency] ??
+                      AppCurrency.currencyFullName[currencyVM
+                          .selectedCurrency] ??
                       currencyVM.selectedCurrency,
                   onTap: () {
                     _showCurrencySelector(context, currencyVM);
+                  },
+                ),
+
+                // Theme Selector Option
+                _buildProfileOption(
+                  context,
+                  icon: Icons.palette_outlined,
+                  title: "Theme Mode",
+                  trailingText: context.watch<ThemeViewModel>().themeMode.name.toUpperCase(),
+                  onTap: () {
+                    _showThemeSelector(context);
                   },
                 ),
 
@@ -672,7 +613,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: colorScheme.errorContainer),
-                      backgroundColor: colorScheme.errorContainer.withOpacity(0.3),
+                      backgroundColor: colorScheme.errorContainer.withValues(
+                        alpha: 0.3,
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -706,6 +649,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
     );
   }
+
   // ================================================================
   //                      HELPER WIDGETS
   // ================================================================
@@ -713,10 +657,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showCurrencySelector(BuildContext context, CurrencyViewModel vm) {
     showModalBottomSheet(
       context: context,
+      // Background color ကို theme အလိုက် အလိုအလျောက် ပြောင်းစေပါတယ်
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (BuildContext context) {
+        final colorScheme = Theme.of(context).colorScheme;
+
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -725,59 +672,106 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Text(
                   "Select Currency",
-                  style:
-                  Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const Divider(height: 1),
-              Expanded(
-                child: ListView(
+              // ListView.builder သုံးခြင်းက Performance ပိုကောင်းစေပါတယ်
+              Flexible(
+                child: ListView.builder(
                   shrinkWrap: true,
-                  children: AppCurrency.currencyList.map((currencyCode) {
+                  itemCount: AppCurrency.currencyList.length,
+                  itemBuilder: (context, index) {
+                    final currencyCode = AppCurrency.currencyList[index];
                     final isSelected = vm.selectedCurrency == currencyCode;
+
                     return ListTile(
                       leading: Container(
-                        padding: const EdgeInsets.all(8),
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? Theme.of(context).colorScheme.primaryContainer
-                              : Colors.grey.shade200,
+                              ? colorScheme.primary
+                              : colorScheme.surfaceContainerHigh,
                           shape: BoxShape.circle,
                         ),
                         child: Text(
                           currencyCode,
                           style: TextStyle(
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: isSelected
-                                ? Theme.of(context).colorScheme.primary
-                                : Colors.black,
+                                ? colorScheme.onPrimary
+                                : colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
                       title: Text(
                         AppCurrency.currencyFullName[currencyCode] ?? currencyCode,
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
                       ),
                       trailing: isSelected
-                          ? Icon(
-                        Icons.check_circle,
-                        color: Theme.of(context).colorScheme.primary,
-                      )
+                          ? Icon(Icons.check_circle, color: colorScheme.primary)
                           : null,
                       onTap: () {
                         vm.changeCurrency(currencyCode);
                         Navigator.pop(context);
                       },
                     );
-                  }).toList(),
+                  },
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
             ],
           ),
         );
       },
     );
   }
+}
+
+void _showThemeSelector(BuildContext context) {
+  final themeVM = context.read<ThemeViewModel>();
+
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("Select Theme", style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 10),
+            _themeTile(context, "System Default", Icons.brightness_auto, ThemeMode.system, themeVM),
+            _themeTile(context, "Light Mode", Icons.light_mode, ThemeMode.light, themeVM),
+            _themeTile(context, "Dark Mode", Icons.dark_mode, ThemeMode.dark, themeVM),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Widget _themeTile(BuildContext context, String title, IconData icon, ThemeMode mode, ThemeViewModel vm) {
+  final isSelected = vm.themeMode == mode;
+  return ListTile(
+    leading: Icon(icon, color: isSelected ? Theme.of(context).colorScheme.primary : null),
+    title: Text(title),
+    trailing: isSelected ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary) : null,
+    onTap: () {
+      vm.setThemeMode(mode);
+      Navigator.pop(context);
+    },
+  );
 }
 
 // ================================================================
@@ -808,14 +802,14 @@ Widget _buildUpgradeCard(BuildContext context, AuthViewModel authVM) {
   } else if (isFreeUser) {
     // Free user - Normal style
     gradientStartColor = colorScheme.primary;
-    gradientEndColor = colorScheme.primary.withOpacity(0.8);
+    gradientEndColor = colorScheme.primary.withValues(alpha: 0.8);
     icon = Icons.workspace_premium;
     title = "Upgrade to PRO";
     subtitle = "Unlock unlimited features & analytics";
   } else {
     // This shouldn't happen, but as fallback
     gradientStartColor = colorScheme.primary;
-    gradientEndColor = colorScheme.primary.withOpacity(0.8);
+    gradientEndColor = colorScheme.primary.withValues(alpha: 0.8);
     icon = Icons.upgrade;
     title = "Upgrade";
     subtitle = "Get premium features";
@@ -836,7 +830,7 @@ Widget _buildUpgradeCard(BuildContext context, AuthViewModel authVM) {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: gradientStartColor.withOpacity(0.3),
+            color: gradientStartColor.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -861,7 +855,7 @@ Widget _buildUpgradeCard(BuildContext context, AuthViewModel authVM) {
                 Text(
                   subtitle,
                   style: textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
                 ),
                 // Trial countdown if applicable
@@ -871,7 +865,7 @@ Widget _buildUpgradeCard(BuildContext context, AuthViewModel authVM) {
                     child: Text(
                       "${authVM.daysUntilTrialEnds} days left in trial",
                       style: textTheme.labelSmall?.copyWith(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -882,7 +876,7 @@ Widget _buildUpgradeCard(BuildContext context, AuthViewModel authVM) {
           Container(
             padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -918,12 +912,12 @@ Widget _buildSectionHeader(BuildContext context, String title) {
 }
 
 Widget _buildProfileOption(
-    BuildContext context, {
-      required IconData icon,
-      required String title,
-      required VoidCallback onTap,
-      String? trailingText,
-    }) {
+  BuildContext context, {
+  required IconData icon,
+  required String title,
+  required VoidCallback onTap,
+  String? trailingText,
+}) {
   final colorScheme = Theme.of(context).colorScheme;
   final textTheme = Theme.of(context).textTheme;
 
@@ -938,7 +932,7 @@ Widget _buildProfileOption(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: colorScheme.primaryContainer.withOpacity(0.5),
+          color: colorScheme.primaryContainer.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: colorScheme.primary, size: 22),

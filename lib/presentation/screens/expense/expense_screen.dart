@@ -1,10 +1,6 @@
-import 'package:chashview/presentation/widgets/currency_text.dart';
-import 'package:chashview/presentation/widgets/label_text.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../../core/constants/app_sizes.dart';
-import '../../../core/routing/route_names.dart';
 import '../../../domain/entities/category_entity.dart'; // Added CategoryEntity import for filtering
 import '../../../domain/entities/expense_entity.dart';
 import '../../../domain/entities/title_entity.dart';
@@ -18,7 +14,9 @@ import '../../widgets/category_dialog.dart';
 import '../../widgets/category_title_expansion_list.dart';
 import '../../widgets/charts/period_comparison_pie_chart.dart';
 import '../../widgets/chart_legend.dart';
+import '../../widgets/currency_text.dart';
 import '../../widgets/date_range_picker.dart';
+import '../../widgets/label_text.dart';
 import '../../widgets/time_range_tab.dart';
 import 'expense_by_title_screen.dart';
 
@@ -129,11 +127,6 @@ class _ExpenseScreenState extends State<ExpenseScreen>
     setState(() => _selectedRange = newRange);
     _triggerSummaryUpdate();
   }
-
-  void _onSettingsPressed() {
-    Navigator.pushNamed(context, RouteNames.settings);
-  }
-
 
   void _onAddCategoryPressed() {
     showDialog(

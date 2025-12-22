@@ -149,7 +149,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     options: UserRole.values,
                     onSelected: (value) {
                       setState(() {
-                        _selectedRoleFilter = value as UserRole?;
+                        _selectedRoleFilter = value;
                       });
                     },
                   ),
@@ -163,7 +163,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     options: UserStatus.values,
                     onSelected: (value) {
                       setState(() {
-                        _selectedStatusFilter = value as UserStatus?;
+                        _selectedStatusFilter = value;
                       });
                     },
                   ),
@@ -271,7 +271,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final totalUsers = adminVM.users.length;
     final filteredCount = filteredUsers.length;
     final adminCount = adminVM.users.where((u) => u.role == UserRole.admin).length;
-    final moderatorCount = adminVM.users.where((u) => u.role == UserRole.moderator).length;
     final proUsers = adminVM.users.where((u) => u.status == UserStatus.pro).length;
 
     return Card(

@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:chashview/presentation/screens/summary/summary_screen.dart';
+import 'package:cash_view/presentation/screens/summary/summary_screen.dart';
 import 'package:flutter/material.dart';
 
 import 'widgets/bottom_nav_bar.dart';

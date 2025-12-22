@@ -23,6 +23,14 @@
           }
         },
         {
+          "client_id": "739597429843-lca9lco83nm1j6vu0t04v3g54ea7paq5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.simplewaytechnology.chashview",
+            "certificate_hash": "bb0b8971d91830eb4b03dd83b63e58fe941fdb0a"
+          }
+        },
+        {
           "client_id": "739597429843-q0rp4qe1dm3gu69no2aelela55l7cggi.apps.googleusercontent.com",
           "client_type": 3
         }

@@ -92,10 +92,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
   // 🔥 IMPLEMENT MISSING METHODS
 
-  @override
   Stream<UserEntity?> get userStream => _userStreamController.stream;
 
-  @override
   Future<void> refreshUser(String userId) async {
     try {
       final user = await remoteDataSource.getUserByUid(userId);

@@ -80,18 +80,18 @@ class LoginScreen extends StatelessWidget {
                   'Manage your street food business\nsmartly & easily.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 14,
+                    color: Colors.white.withValues(alpha: 0.8),
                     height: 1.4,
                   ),
                 ),
 
-                const Spacer(flex: 2),
+                const Spacer(flex: 1),
 
                 // Google Login Button
                 SizedBox(
-                  width: double.infinity,
-                  height: 56,
+                  width: 260,
+                  height: 48,
                   child: ElevatedButton(
                     onPressed: () => _handleGoogleLogin(context, authVM),
                     style: ElevatedButton.styleFrom(
@@ -99,7 +99,7 @@ class LoginScreen extends StatelessWidget {
                       foregroundColor: AppColors.splash,
                       elevation: 4,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(24),
                       ),
                     ),
                     child: Row(

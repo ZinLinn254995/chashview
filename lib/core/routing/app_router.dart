@@ -1,21 +1,24 @@
-import 'package:chashview/presentation/screens/admin/plan_management_screen.dart';
-import 'package:chashview/presentation/screens/admin/top_up_management_screen.dart';
-import 'package:chashview/presentation/screens/cart/cart_screen.dart';
-import 'package:chashview/presentation/screens/profile/profile_screen.dart';
-import 'package:chashview/presentation/screens/profile/redeem_screen.dart';
-import 'package:chashview/presentation/screens/profile/upgrade_pro_screen.dart';
 import 'package:flutter/material.dart';
 import '../../core/routing/route_names.dart';
 import '../../presentation/main_app_content.dart';
+import '../../presentation/screens/admin/plan_management_screen.dart';
+import '../../presentation/screens/admin/top_up_management_screen.dart';
 import '../../presentation/screens/admin/user_management_screen.dart';
 import '../../presentation/screens/auth/login_screen.dart';
+import '../../presentation/screens/cart/cart_screen.dart';
 import '../../presentation/screens/income/income_by_title_screen.dart';
 import '../../presentation/screens/lesson/lesson_one.dart';
+import '../../presentation/screens/profile/profile_screen.dart';
+import '../../presentation/screens/profile/redeem_screen.dart';
+import '../../presentation/screens/profile/upgrade_pro_screen.dart';
 import '../../presentation/screens/settings/settings_screen.dart';
 import '../../presentation/screens/splash/splash_screen.dart';
 import '../../presentation/screens/summary/base_detail_screen.dart';
 
 class AppRouter {
+  // ✅ Navigator Key ကို static အနေနဲ့ ထားပေးရပါမယ်
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
       case RouteNames.splash:
@@ -24,11 +27,11 @@ class AppRouter {
       case RouteNames.login:
         return MaterialPageRoute(builder: (_) => const LoginScreen());
 
-      // 🔥 အရေးအကြီးဆုံး Route: Home/Main Tab View
+    // 🔥 အရေးအကြီးဆုံး Route: Home/Main Tab View
       case RouteNames.home:
         return MaterialPageRoute(builder: (_) => const MainAppContent());
 
-      // 🔥 Settings Screen
+    // 🔥 Settings Screen
       case RouteNames.settings:
         return MaterialPageRoute(builder: (_) => const SettingsScreen());
 
@@ -66,7 +69,7 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const UpgradeProScreen());
 
 
-      // 🔥 Income By Title (Detail Page)
+    // 🔥 Income By Title (Detail Page)
       case RouteNames.incomeByTitle:
         final args = settings.arguments as Map<String, dynamic>;
         return MaterialPageRoute(
@@ -76,7 +79,7 @@ class AppRouter {
           ),
         );
 
-      // Error Handling
+    // Error Handling
       default:
         return _errorRoute();
     }

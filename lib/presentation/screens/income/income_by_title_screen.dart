@@ -1,6 +1,3 @@
-import 'dart:io';
-
-import 'package:chashview/presentation/widgets/currency_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +8,7 @@ import '../../../domain/entities/income_entity.dart';
 import '../../../domain/entities/title_entity.dart';
 import '../../viewmodels/income_viewmodel.dart';
 import '../../viewmodels/title_viewmodel.dart';
+import '../../widgets/currency_text.dart';
 import '../../widgets/custom_empty_widget.dart';
 import '../../widgets/edit_income_dialog.dart';
 
@@ -82,11 +80,10 @@ class _IncomeByTitleScreenState extends State<IncomeByTitleScreen> {
                         : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(AppPadding.md, 0, AppPadding.md, AppPadding.xl),
                       itemCount: filteredIncomes.length,
-                      // MARK: မျဉ်းတားတဲ့နေရာ (SizedBox အစား Divider ကို ပြောင်းသုံးရန်)
                       separatorBuilder: (_, __) => Divider(
                         height: 1, // မျဉ်းအမြင့်
                         thickness: 0.5, // မျဉ်းအထူ
-                        color: Theme.of(context).colorScheme.outline.withOpacity(0.5), // အရောင် (opacity နည်းအောင်)
+                        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5), // အရောင် (opacity နည်းအောင်)
                       ),
 
                       itemBuilder: (context, index) {

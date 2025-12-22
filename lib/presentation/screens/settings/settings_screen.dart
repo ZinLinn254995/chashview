@@ -1,10 +1,8 @@
-// lib/presentation/screens/settings/settings_screen.dart
-
-import 'package:chashview/core/routing/route_names.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_currency.dart';
 // import '../../viewmodels/auth_viewmodel.dart'; // မလိုတော့တဲ့ viewmodel တွေ ဖျက်နိုင်ပါတယ်
+import '../../../core/routing/route_names.dart';
 import '../../viewmodels/currency_viewmodel.dart';
 // import '../../viewmodels/main_viewmodel.dart'; // 🔥 ဖယ်ရှားပါ
 import '../../widgets/circular_progress_widget.dart';
