@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -28,11 +29,11 @@ class _ChartScreenState extends State<ChartScreen> {
 
   // State
   TimeRangeTab _selectedTab = TimeRangeTab.daily;
+  bool _isManualRefreshing = false;
 
   @override
   void initState() {
     super.initState();
-    // 🔥 FIX: User ဝင်လာမယ့်အချိန်ကို စောင့်ပြီး Data ဆွဲဖို့ Listener ထည့်ပါ
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndSubscribe();
       context.read<AuthViewModel>().addListener(_onAuthUpdated);
@@ -45,22 +46,33 @@ class _ChartScreenState extends State<ChartScreen> {
     super.dispose();
   }
 
-
-  // 🔥 FIX: Auth ပြောင်းလဲမှုရှိတိုင်း ခေါ်မည့် Function
   void _onAuthUpdated() {
     _checkAndSubscribe();
   }
 
-  // 🔥 FIX: User ရှိ၊ မရှိ စစ်ဆေးပြီးမှ Data ဆွဲမည့် Logic
   void _checkAndSubscribe() {
     if (!mounted) return;
 
     final authViewModel = context.read<AuthViewModel>();
     final summaryViewModel = context.read<SummaryViewModel>();
 
-    // User ရှိပြီး Data က Empty ဖြစ်နေရင် (သို့) အရင် User ဟောင်း Data ပျက်သွားရင် ပြန်ဆွဲပါ
     if (authViewModel.user != null && summaryViewModel.chartData.isEmpty) {
       summaryViewModel.subscribeChartData(_selectedTab);
+    }
+  }
+
+  // Pull to Refresh Logic
+  Future<void> _handleRefresh() async {
+    setState(() => _isManualRefreshing = true);
+
+    final viewModel = context.read<SummaryViewModel>();
+    viewModel.subscribeChartData(_selectedTab);
+
+    // UI အပြောင်းအလဲ သိသာစေရန် ခေတ္တစောင့်ခြင်း
+    await Future.delayed(const Duration(milliseconds: 800));
+
+    if (mounted) {
+      setState(() => _isManualRefreshing = false);
     }
   }
 
@@ -74,7 +86,6 @@ class _ChartScreenState extends State<ChartScreen> {
     viewModel.subscribeChartData(_selectedTab);
   }
 
-  // ✅ Full Screen ဖွင့်ပေးမည့် Function
   void _openFullScreenChart(String title, Widget Function() chartBuilder) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -86,7 +97,6 @@ class _ChartScreenState extends State<ChartScreen> {
     );
   }
 
-  // Widget Builders
   Widget _buildCustomAppBar(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -111,11 +121,6 @@ class _ChartScreenState extends State<ChartScreen> {
                   ),
                 ),
               ),
-              /*IconButton(
-                icon: const Icon(Icons.settings),
-                color: colorScheme.onSurface,
-                onPressed: _onSettingsPressed,
-              ),*/
             ],
           ),
           const SizedBox(height: 8),
@@ -133,80 +138,84 @@ class _ChartScreenState extends State<ChartScreen> {
     return Expanded(
       child: Consumer<SummaryViewModel>(
         builder: (context, viewModel, child) {
-          if (viewModel.chartData.isEmpty) {
-            return _buildLoadingState();
-          }
-          return _buildChartsList(viewModel);
+          // Loading ဖြစ်နေချိန် သို့မဟုတ် data မရှိသေးလျှင် Chart Sections များကို ဖျောက်ထားပါမည်
+          final bool hideCharts = _isManualRefreshing || viewModel.chartData.isEmpty;
+
+          return CustomScrollView(
+            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+            slivers: [
+              // 🔹 Cupertino Refresh Control (၎င်းတွင် loading icon ပါပြီးသားဖြစ်သည်)
+              CupertinoSliverRefreshControl(
+                refreshTriggerPullDistance: 130.0,
+                refreshIndicatorExtent: 60.0,
+                onRefresh: _handleRefresh,
+              ),
+
+              if (!hideCharts)
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: _kHorizontalPadding,
+                    vertical: _kVerticalPadding,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      // 1. Comparison Chart
+                      _buildChartSection(
+                        title: "COLUMN CHART",
+                        chart: ComparisonChart(
+                          data: viewModel.chartData,
+                          activeTab: _selectedTab,
+                        ),
+                        fullScreenBuilder: () => ComparisonChart(
+                          data: viewModel.chartData,
+                          activeTab: _selectedTab,
+                        ),
+                      ),
+
+                      const Divider(height: _kDividerHeight),
+
+                      // 2. Income/Expense Line Chart
+                      _buildChartSection(
+                        title: "LINE CHART",
+                        chart: IncomeExpenseLineChart(
+                          data: viewModel.chartData,
+                          activeTab: _selectedTab,
+                          enableZoom: false,
+                        ),
+                        fullScreenBuilder: () => IncomeExpenseLineChart(
+                          data: viewModel.chartData,
+                          activeTab: _selectedTab,
+                          enableZoom: true,
+                        ),
+                      ),
+
+                      const Divider(height: _kDividerHeight),
+
+                      // 3. Net Profit Line Chart
+                      _buildChartSection(
+                        title: "NET PROFIT CHART",
+                        chart: NetProfitLineChart(
+                          data: viewModel.chartData,
+                          activeTab: _selectedTab,
+                          enableZoom: false,
+                        ),
+                        fullScreenBuilder: () => NetProfitLineChart(
+                          data: viewModel.chartData,
+                          activeTab: _selectedTab,
+                          enableZoom: true,
+                        ),
+                      ),
+                      const SizedBox(height: _kBottomPadding),
+                    ]),
+                  ),
+                )
+              else
+              // Loading ဖြစ်နေစဉ် Chart နေရာလွတ်ဖြစ်နေစေရန် SliverToBoxAdapter ကိုသုံးပါသည်
+                const SliverToBoxAdapter(child: SizedBox.shrink()),
+            ],
+          );
         },
       ),
-    );
-  }
-
-  Widget _buildLoadingState() {
-    return const Center(child: CircularProgressIndicator());
-  }
-
-  Widget _buildChartsList(SummaryViewModel viewModel) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(
-        horizontal: _kHorizontalPadding,
-        vertical: _kVerticalPadding,
-      ),
-      children: [
-        // 1. Comparison Chart (Column)
-        _buildChartSection(
-          title: "COLUMN CHART",
-          // List View မှာပြမယ့် Chart
-          chart: ComparisonChart(
-            data: viewModel.chartData,
-            activeTab: _selectedTab,
-          ),
-          // Full Screen မှာပြမယ့် Chart Builder
-          fullScreenBuilder: () => ComparisonChart(
-            data: viewModel.chartData,
-            activeTab: _selectedTab,
-          ),
-        ),
-
-        const Divider(height: _kDividerHeight),
-
-        // 2. Income/Expense Line Chart
-        _buildChartSection(
-          title: "LINE CHART",
-          // List View (Zoom ပိတ်)
-          chart: IncomeExpenseLineChart(
-            data: viewModel.chartData,
-            activeTab: _selectedTab,
-            enableZoom: false,
-          ),
-          // Full Screen (Zoom ဖွင့်)
-          fullScreenBuilder: () => IncomeExpenseLineChart(
-            data: viewModel.chartData,
-            activeTab: _selectedTab,
-            enableZoom: true,
-          ),
-        ),
-
-        const Divider(height: _kDividerHeight),
-
-        // 3. Net Profit Line Chart
-        _buildChartSection(
-          title: "NET PROFIT CHART",
-          // List View (Zoom ပိတ်)
-          chart: NetProfitLineChart(
-            data: viewModel.chartData,
-            activeTab: _selectedTab,
-            enableZoom: false,
-          ),
-          // Full Screen (Zoom ဖွင့်)
-          fullScreenBuilder: () => NetProfitLineChart(
-            data: viewModel.chartData,
-            activeTab: _selectedTab,
-            enableZoom: true,
-          ),
-        ),
-        const SizedBox(height: _kBottomPadding),
-      ],
     );
   }
 
@@ -221,7 +230,6 @@ class _ChartScreenState extends State<ChartScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header Row with Title and Full Screen Icon
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -243,8 +251,6 @@ class _ChartScreenState extends State<ChartScreen> {
           ],
         ),
         const SizedBox(height: 8),
-
-        // Chart Area (Tap to open full screen as well)
         GestureDetector(
           onTap: () => _openFullScreenChart(title, fullScreenBuilder),
           behavior: HitTestBehavior.opaque,

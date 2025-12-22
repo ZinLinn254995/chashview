@@ -648,9 +648,15 @@ class _BookmarkedGroupedGrid extends StatelessWidget {
             Expanded(
               child: Text(
                 title.name,
-                style: Theme.of(context).textTheme.bodyMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+                textHeightBehavior: const TextHeightBehavior(
+                  applyHeightToFirstAscent: false,
+                  applyHeightToLastDescent: false,
+                ),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  height: 1.5,
+                ),
               ),
             ),
           ],
@@ -778,3 +784,455 @@ class _SkeletonGrid extends StatelessWidget {
     );
   }
 }
+
+/*
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+// Constants & Routes
+import '../../../core/constants/app_sizes.dart';
+import '../../../core/routing/route_names.dart';
+
+// Entities
+import '../../../domain/entities/category_entity.dart';
+import '../../../domain/entities/expense_entity.dart';
+import '../../../domain/entities/income_entity.dart';
+import '../../../domain/entities/title_entity.dart';
+
+// ViewModels
+import '../../viewmodels/auth_viewmodel.dart';
+import '../../viewmodels/category_viewmodel.dart';
+import '../../viewmodels/expense_viewmodel.dart';
+import '../../viewmodels/income_viewmodel.dart';
+import '../../viewmodels/summary_viewmodel.dart';
+import '../../viewmodels/title_viewmodel.dart';
+
+// Widgets
+import '../../widgets/currency_text.dart';
+import '../../widgets/custom_empty_widget.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _scheduleInitialLoad();
+  }
+
+  void _scheduleInitialLoad() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final summaryVM = Provider.of<SummaryViewModel>(context, listen: false);
+      final authVM = Provider.of<AuthViewModel>(context, listen: false);
+
+      if (authVM.user != null) {
+        final now = DateTime.now();
+        final start = DateTime(now.year, now.month, now.day);
+        final end = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+
+        summaryVM.subscribeWithRange(SummaryTimeRange.homeDaily, start, end);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _onCartPressed() {
+    Navigator.pushNamed(context, RouteNames.cart);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppPadding.md),
+              child: Column(
+                children: [
+                  _buildTopHeader(context),
+                  const SizedBox(height: AppPadding.md),
+                  _buildDailySummaryCard(context),
+                ],
+              ),
+            ),
+            TabBar(
+              controller: _tabController,
+              labelColor: colorScheme.primary,
+              unselectedLabelColor: colorScheme.onSurfaceVariant,
+              indicatorColor: colorScheme.primary,
+              indicatorSize: TabBarIndicatorSize.tab,
+              tabs: const [
+                Tab(
+                  height: 56,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.arrow_downward_rounded, size: 20),
+                      SizedBox(width: 8),
+                      Text("Income Shortcuts", style: TextStyle(fontSize: 14)),
+                    ],
+                  ),
+                ),
+                Tab(
+                  height: 56,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.arrow_upward_rounded, size: 20),
+                      SizedBox(width: 8),
+                      Text("Expense Shortcuts", style: TextStyle(fontSize: 14)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: const [
+                  _BookmarkedGroupedGrid(type: 'income'),
+                  _BookmarkedGroupedGrid(type: 'expense'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopHeader(BuildContext context) {
+    return Consumer2<AuthViewModel, TitleViewModel>(
+      builder: (context, authVM, titleVM, _) {
+        final name = authVM.user?.displayName ?? '...';
+        final greetingMessage = _getDynamicGreeting();
+        final cartCount = titleVM.expenseTitles.where((t) => t.cart).length;
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Hello, $name",
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    greetingMessage,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      height: 1.3,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Badge(
+              isLabelVisible: cartCount > 0,
+              label: Text(cartCount.toString()),
+              offset: const Offset(-4, 0),
+              child: IconButton(
+                onPressed: _onCartPressed,
+                icon: const Icon(Icons.shopping_cart_outlined),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _getDynamicGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return "Good Morning! Ready to track?";
+    if (hour < 17) return "Good Afternoon! Keep it up.";
+    if (hour < 21) return "Good Evening! How was your spending?";
+    return "Good Night! Rest well.";
+  }
+
+  Widget _buildDailySummaryCard(BuildContext context) {
+    return Consumer<SummaryViewModel>(
+      builder: (context, vm, child) {
+        final data = vm.getSummary(SummaryTimeRange.homeDaily);
+        if (vm.isLoading || data == null) return const _SkeletonSummaryCard();
+
+        return Container(
+          height: 100,
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF6200EA), Color(0xFF2962FF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF2962FF).withValues(alpha: 0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("Today's Net",
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 12)),
+                  const SizedBox(height: 4),
+                  CurrencyText(
+                    amount: data.net,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontSize: 22),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildCompactRow(
+                      icon: Icons.arrow_downward_rounded,
+                      color: const Color(0xFF69F0AE),
+                      amount: data.totalIncome),
+                  const SizedBox(height: 8),
+                  _buildCompactRow(
+                      icon: Icons.arrow_upward_rounded,
+                      color: const Color(0xFFFF8A80),
+                      amount: data.totalExpense),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCompactRow(
+      {required IconData icon, required Color color, required double amount}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 16),
+        const SizedBox(width: 4),
+        CurrencyText(
+            amount: amount,
+            style: const TextStyle(
+                fontWeight: FontWeight.w600, color: Colors.white, fontSize: 14)),
+      ],
+    );
+  }
+}
+
+class _BookmarkedGroupedGrid extends StatelessWidget {
+  final String type;
+  const _BookmarkedGroupedGrid({required this.type});
+
+  Future<void> _showAmountDialog(BuildContext context, TitleEntity title) async {
+    final TextEditingController controller = TextEditingController();
+    final colorScheme = Theme.of(context).colorScheme;
+    DateTime selectedDate = DateTime.now();
+
+    final double? amount = await showDialog<double>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (innerCtx, setState) {
+          final bool isExpense = type == 'expense';
+          return AlertDialog(
+            backgroundColor: colorScheme.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Icon(
+                  type == 'income' ? Icons.add_circle : Icons.remove_circle,
+                  color: type == 'income' ? colorScheme.secondary : colorScheme.tertiary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Text(title.name, style: Theme.of(context).textTheme.titleMedium)),
+                if (isExpense)
+                  IconButton(
+                    icon: Icon(title.cart ? Icons.shopping_cart : Icons.shopping_cart_outlined, color: Colors.orange),
+                    onPressed: () {
+                      context.read<TitleViewModel>().toggleTitleCart('expense', title.id, !title.cart);
+                      Navigator.pop(ctx);
+                    },
+                  ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: controller,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: "Amount",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Date:'),
+                    TextButton.icon(
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text('${selectedDate.year}-${selectedDate.month}-${selectedDate.day}'),
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                            context: innerCtx, initialDate: selectedDate, firstDate: DateTime(2000), lastDate: DateTime.now());
+                        if (picked != null) setState(() => selectedDate = picked);
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+              FilledButton(
+                onPressed: () {
+                  final val = double.tryParse(controller.text.trim());
+                  if (val != null && val > 0) Navigator.pop(ctx, val);
+                },
+                child: const Text("Save"),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (amount != null && context.mounted) {
+      final id = DateTime.now().millisecondsSinceEpoch.toString();
+      if (type == 'income') {
+        await context.read<IncomeViewModel>().addIncome(IncomeEntity(id: id, titleId: title.id, amount: amount, date: selectedDate, createdAt: DateTime.now()));
+      } else {
+        await context.read<ExpenseViewModel>().addExpense(ExpenseEntity(id: id, titleId: title.id, amount: amount, date: selectedDate, createdAt: DateTime.now()));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer3<CategoryViewModel, TitleViewModel, SummaryViewModel>(
+      builder: (context, categoryVM, titleVM, summaryVM, child) {
+        final summaryData = summaryVM.getSummary(SummaryTimeRange.homeDaily);
+        if (categoryVM.isLoading || titleVM.isLoading || summaryData == null) return const _SkeletonGrid();
+
+        final allCategories = categoryVM.getCategoriesByType(type);
+        final allTitles = titleVM.getTitlesByType(type);
+        final relevantCategories = allCategories.where((cat) => allTitles.any((t) => t.categoryId == cat.id && t.bookmark)).toList();
+
+        if (relevantCategories.isEmpty) {
+          return Center(child: CustomEmptyWidget(type: EmptyStateType.section, title: "No Shortcuts", message: "Bookmark items to see them here.", icon: Icons.bookmark_border));
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(AppPadding.md),
+          itemCount: relevantCategories.length,
+          itemBuilder: (context, index) {
+            final category = relevantCategories[index];
+            final titles = allTitles.where((t) => t.categoryId == category.id && t.bookmark).toList();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(category.name, style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                ),
+                // 💡 ပြင်ဆင်ထားသော Wrap အပိုင်း
+                Wrap(
+                  spacing: 10, // Item များကြား အလျားလိုက်ခြားနားချက်
+                  runSpacing: 10, // Item များကြား အပေါ်အောက်ခြားနားချက်
+                  children: titles.map((title) => _buildTitleCard(context, title)).toList(),
+                ),
+                const SizedBox(height: AppPadding.xl),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTitleCard(BuildContext context, TitleEntity title) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _showAmountDialog(context, title),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min, // 💡 စာသားအရှည်အတိုင်းဖြစ်စေရန်
+          children: [
+            Icon(Icons.star_rounded, size: 18, color: type == 'income' ? colorScheme.secondary : colorScheme.tertiary),
+            const SizedBox(width: 8),
+            Text(title.name, style: Theme.of(context).textTheme.bodyMedium),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Skeleton Widgets (ထိန်းသိမ်းထားပါသည်)
+class _SkeletonSummaryCard extends StatelessWidget {
+  const _SkeletonSummaryCard();
+  @override
+  Widget build(BuildContext context) {
+    return Container(height: 100, margin: const EdgeInsets.symmetric(vertical: 8), decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)));
+  }
+}
+
+class _SkeletonGrid extends StatelessWidget {
+  const _SkeletonGrid();
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: CircularProgressIndicator());
+  }
+}*/
